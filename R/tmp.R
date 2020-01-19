@@ -3,8 +3,8 @@ pon = PipeOpImputeHist$new(id = "imputer_num", param_vals = list(affect_columns 
 pof = PipeOpImputeNewlvl$new(id = "imputer_fct", param_vals = list(affect_columns = is.factor))
 imputer = pom %>>% pon %>>% pof
 
-learner = mlr_learners$get("classif.rpart")
-learner = mlr_learners$get("classif.ranger")
+# learner = mlr_learners$get("classif.rpart")
+learner = mlr_learners$get("classif.ranger") # , importance = "impurity"
 print(learner)
 
 polrn = PipeOpLearner$new(learner)

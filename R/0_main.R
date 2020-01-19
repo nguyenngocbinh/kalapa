@@ -97,13 +97,13 @@ f_preprocessing <- function(dt){
 
 }
 
-
+cleaned_train <- as.data.table(cleaned_train)
 #=============================================================================
 # 3. Feature selection
 ## create task
 task = TaskClassif$new(id = "kalapa", backend = cleaned_train, target = "label_fct")
-task = TaskRegr$new(id = "kalapa", backend = train, target = "label")
-task$feature_names = setdiff(task$feature_names, c("label", "id"))
+# task = TaskRegr$new(id = "kalapa", backend = train, target = "label")
+task$col_roles$feature = setdiff(task$col_roles$feature, c("label", "id"))
 
 autoplot(task)
 mlr3viz::autoplot(task, type = "pairs")
@@ -111,10 +111,10 @@ mlr3viz::autoplot(task, type = "pairs")
 #=============================================================================
 # 4. Model
 ## create learner
-learner = mlr_learners$get("classif.ranger")
-set.seed(1911)
-train_set = sample(task$nrow * .8)
-test_set = setdiff(seq_len(task$nrow), train_set)
+# learner = mlr_learners$get("classif.ranger")
+# set.seed(1911)
+# train_set = sample(task$nrow * .8)
+# test_set = setdiff(seq_len(task$nrow), train_set)
 
 #=============================================================================
 # 5. Predict

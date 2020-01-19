@@ -1,0 +1,65 @@
+ID,Table,Fields,Description,Field type
+1,train|test,id,ID of client,INT
+2,train,label,"Target variable (1 - client with payment difficulties, 0 - all other cases)",INT
+3,train|test,province,Province of client,String
+4,train|test,district,District of client,String
+5,train|test,age_source1,Age of client from source 1,INT
+6,train|test,age_source2,Age of client from source 2,INT
+7,train|test,maCv,Job description of client,String
+8,train|test,FIELD_1,N/A,N/A
+9,train|test,FIELD_2,N/A,N/A
+10,train|test,FIELD_3,N/A,N/A
+11,train|test,FIELD_4,N/A,N/A
+12,train|test,FIELD_5,N/A,N/A
+13,train|test,FIELD_6,N/A,N/A
+14,train|test,FIELD_7,N/A,N/A
+15,train|test,FIELD_8,N/A,N/A
+16,train|test,FIELD_9,N/A,N/A
+17,train|test,FIELD_10,N/A,N/A
+18,train|test,FIELD_11,N/A,N/A
+19,train|test,FIELD_12,N/A,N/A
+20,train|test,FIELD_13,N/A,N/A
+21,train|test,FIELD_14,N/A,N/A
+22,train|test,FIELD_15,N/A,N/A
+23,train|test,FIELD_16,N/A,N/A
+24,train|test,FIELD_17,N/A,N/A
+25,train|test,FIELD_18,N/A,N/A
+26,train|test,FIELD_19,N/A,N/A
+27,train|test,FIELD_20,N/A,N/A
+28,train|test,FIELD_21,N/A,N/A
+29,train|test,FIELD_22,N/A,N/A
+30,train|test,FIELD_23,N/A,N/A
+31,train|test,FIELD_24,N/A,N/A
+32,train|test,FIELD_25,N/A,N/A
+33,train|test,FIELD_26,N/A,N/A
+34,train|test,FIELD_27,N/A,N/A
+35,train|test,FIELD_28,N/A,N/A
+36,train|test,FIELD_29,N/A,N/A
+37,train|test,FIELD_30,N/A,N/A
+38,train|test,FIELD_31,N/A,N/A
+39,train|test,FIELD_32,N/A,N/A
+40,train|test,FIELD_33,N/A,N/A
+41,train|test,FIELD_34,N/A,N/A
+42,train|test,FIELD_35,N/A,N/A
+43,train|test,FIELD_36,N/A,N/A
+44,train|test,FIELD_37,N/A,N/A
+45,train|test,FIELD_38,N/A,N/A
+46,train|test,FIELD_39,N/A,N/A
+47,train|test,FIELD_40,N/A,N/A
+48,train|test,FIELD_41,N/A,N/A
+49,train|test,FIELD_42,N/A,N/A
+50,train|test,FIELD_43,N/A,N/A
+51,train|test,FIELD_44,N/A,N/A
+52,train|test,FIELD_45,N/A,N/A
+53,train|test,FIELD_46,N/A,N/A
+54,train|test,FIELD_47,N/A,N/A
+55,train|test,FIELD_48,N/A,N/A
+56,train|test,FIELD_49,N/A,N/A
+57,train|test,FIELD_50,N/A,N/A
+58,train|test,FIELD_51,N/A,N/A
+59,train|test,FIELD_52,N/A,N/A
+60,train|test,FIELD_53,N/A,N/A
+61,train|test,FIELD_54,N/A,N/A
+62,train|test,FIELD_55,N/A,N/A
+63,train|test,FIELD_56,N/A,N/A
+64,train|test,FIELD_57,N/A,N/A
