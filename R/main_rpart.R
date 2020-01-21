@@ -146,6 +146,13 @@ imputer = pom %>>% pon %>>% pof
 imputer = pon %>>% pof
 
 ## 2.4 Imbalanced adjustment
+pop = po("smote")
+
+opb = po("classbalancing")
+opb$param_set$values = list(ratio = 20, reference = "minor",
+                            adjust = "minor", shuffle = FALSE)
+result_opb = opb$train(list(task))[[1L]]
+table(result_opb$truth())
 
 # 3. Feature selection ------------------------------------------------------------
 filter = mlr_pipeops$get("filter",
@@ -166,7 +173,8 @@ polrn = PipeOpLearner$new(learner)
 
 ## 4.2. Make graph
 
-graph = imputer %>>% filter %>>% polrn
+graph = imputer %>>% pop %>>% filter %>>% polrn
+graph = opb %>>% imputer %>>% filter %>>% polrn
 graph$plot(html = TRUE) %>% visNetwork::visInteraction()
 
 glrn = GraphLearner$new(graph)
@@ -174,27 +182,23 @@ print(glrn)
 glrn$predict_type <- "prob"
 
 ## 4.3. Tuning hypeparameters
-<<<<<<< HEAD
 
 ### 4.3.1. Tuning strategy
 
-resampling = rsmp("cv", folds = 3)
-# resampling = rsmp("holdout")
 library("paradox")
 library("mlr3tuning")
 ### 4.3.1. Tuning strategy
 
-resampling_inner = rsmp("cv", folds = 4)
+resampling_inner = rsmp("cv", folds = 6)
 measures = msr("classif.auc")
 ps = ParamSet$new(list(
-  ParamInt$new("classif.rpart.minsplit", lower = 5, upper = 30),
-  ParamDbl$new("classif.rpart.cp", lower = 0, upper = 1),
-  ParamDbl$new("importance.filter.frac", lower = .25, upper = .5),
-  ParamInt$new("classif.rpart.maxdepth", lower = 30, upper = 100)
+  ParamInt$new("classif.rpart.minsplit", lower = 19, upper = 25),
+  ParamDbl$new("classif.rpart.cp", lower = 0, upper = .2),
+  ParamDbl$new("importance.filter.frac", lower = .35, upper = .7))
+  )
 
-))
 
-terminator = term("evals", n_evals = 10)
+terminator = term("evals", n_evals = 30)
 ### 4.3.2 Tuning
 
 instance = TuningInstance$new(
@@ -214,7 +218,10 @@ tuner$tune(instance)
 ## result
 instance$result
 instance$result$perf
-instance$archive(unnest = "params")[, c("classif.rpart.cp", "classif.rpart.minsplit", "classif.auc")]
+instance$archive(unnest = "params")[, c("classif.rpart.cp",
+                                        "classif.rpart.minsplit",
+                                        "importance.filter.frac",
+                                        "classif.auc")]
 
 ### 4.3.3. Re-estimate using tuned hyperparameters
 glrn$param_set$values = instance$result$params
@@ -223,6 +230,7 @@ glrn$train(task)
 ## 4.4. Auto tuner to evaluate performance
 library(mlr3tuning)
 tuner = tnr("grid_search", resolution = 10)
+tuner = tnr("random_search")
 at = AutoTuner$new(learner = glrn,
                    resampling = resampling_inner,
                    measures = measures,
@@ -233,12 +241,32 @@ at = AutoTuner$new(learner = glrn,
 resampling_outer = rsmp("cv", folds = 3)
 rr = resample(task = task,
               learner = at,
-              resampling = resampling_outer)
+              resampling = resampling_outer,
+              store_models = TRUE)
 
 # learner hyperparameters are stored in at
 rr$aggregate()
 rr$errors
-rr$prediction() -> x
+rr$prediction()
+rr$prediction()$confusion
+
+rr$prediction() %>% as.data.table() %>% filter(truth == "bad") %>% pull(prob.bad) %>% mean()
 # =============================================================================
 # 5. Predict
 glrn$predict(task, row_ids = test_set)
+
+# check good_bad
+glrn$predict(task, row_ids = test_set) %>% as.data.table() %>% pull(response) %>% table()
+
+# store data
+save(glrn, task, test_set, train_set, file = "results/folder1/rpart_01.Rdata")
+
+# Export predict
+glrn$predict(task, row_ids = test_set) %>%
+  as.data.table() %>%
+  select(id = row_id, label = prob.bad) %>%
+  mutate(id = id - 1) %>%
+  rio::export("results/folder1/01.csv")
+
+# Tai lap ket qua
+load("results/folder1/rpart_01.Rdata")
