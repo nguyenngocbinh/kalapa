@@ -91,13 +91,20 @@ cleaned_train <- train %>%
 cleaned_train %>%
   inspect_cat() %>%
   pull(levels) %>%
-  writexl::write_xlsx("check_range.xlsx")
+  writexl::write_xlsx("tmp/check_range.xlsx")
 
 f_preprocessing <- function(dt){
 
 }
 
 cleaned_train <- as.data.table(cleaned_train)
+# Imputation
+
+pom = PipeOpMissInd$new()
+pon = PipeOpImputeHist$new(id = "imputer_num", param_vals = list(affect_columns = is.numeric))
+pof = PipeOpImputeNewlvl$new(id = "imputer_fct", param_vals = list(affect_columns = is.factor))
+imputer = pom %>>% pon %>>% pof
+
 #=============================================================================
 # 3. Feature selection
 ## create task
