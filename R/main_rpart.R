@@ -149,7 +149,8 @@ imputer = pon %>>% pof
 
 # 3. Feature selection ------------------------------------------------------------
 filter = mlr_pipeops$get("filter",
-                         filter = mlr3filters::FilterVariance$new(),
+                         # filter = mlr3filters::FilterVariance$new(),
+                         filter = mlr3filters::FilterImportance$new(),
                          param_vals = list(filter.frac = 0.5))
 
 
@@ -173,29 +174,37 @@ print(glrn)
 glrn$predict_type <- "prob"
 
 ## 4.3. Tuning hypeparameters
+<<<<<<< HEAD
 
 ### 4.3.1. Tuning strategy
 
 resampling = rsmp("cv", folds = 3)
 # resampling = rsmp("holdout")
-measures = msr("classif.auc")
-
 library("paradox")
+library("mlr3tuning")
+### 4.3.1. Tuning strategy
+
+resampling_inner = rsmp("cv", folds = 4)
+measures = msr("classif.auc")
 ps = ParamSet$new(list(
-  ParamInt$new("classif.rpart.minsplit", lower = 50, upper = 1000),
+  ParamInt$new("classif.rpart.minsplit", lower = 5, upper = 30),
   ParamDbl$new("classif.rpart.cp", lower = 0, upper = 1),
-  ParamDbl$new("variance.filter.frac", lower = 0.25, upper = .5)
+  ParamDbl$new("importance.filter.frac", lower = .25, upper = .5),
+  ParamInt$new("classif.rpart.maxdepth", lower = 30, upper = 100)
+
 ))
 
+terminator = term("evals", n_evals = 10)
 ### 4.3.2 Tuning
-library("mlr3tuning")
+
 instance = TuningInstance$new(
   task = task,
   learner = glrn,
-  resampling = resampling,
+  resampling = resampling_inner,
   measures = measures,
   param_set = ps,
-  terminator = term("evals", n_evals = 50)
+  terminator = terminator
+
 )
 
 tuner = TunerRandomSearch$new()
@@ -211,7 +220,25 @@ instance$archive(unnest = "params")[, c("classif.rpart.cp", "classif.rpart.minsp
 glrn$param_set$values = instance$result$params
 glrn$train(task)
 
+## 4.4. Auto tuner to evaluate performance
+library(mlr3tuning)
+tuner = tnr("grid_search", resolution = 10)
+at = AutoTuner$new(learner = glrn,
+                   resampling = resampling_inner,
+                   measures = measures,
+                   tune_ps = ps,
+                   terminator = terminator,
+                   tuner = tuner)
 
+resampling_outer = rsmp("cv", folds = 3)
+rr = resample(task = task,
+              learner = at,
+              resampling = resampling_outer)
+
+# learner hyperparameters are stored in at
+rr$aggregate()
+rr$errors
+rr$prediction() -> x
 # =============================================================================
 # 5. Predict
 glrn$predict(task, row_ids = test_set)
