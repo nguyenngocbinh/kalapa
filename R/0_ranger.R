@@ -3,6 +3,8 @@ lapply(pkgs, function(pk) require(pk, character.only = TRUE))
 
 ## 2.2 create classif task
 load("data/task_classif.Rdata")
+task$col_roles$feature = setdiff(task$col_roles$feature, c("label", "id"))
+task$col_roles
 
 # split row_roles
 train_idx = 1:30000
@@ -10,41 +12,55 @@ test_idx = setdiff(seq_len(task$nrow), train_idx)
 
 task$row_roles$use <- train_idx
 task$row_roles$validation <- test_idx
-
+print(task)
 
 mlr3viz::autoplot(task)
-plot_cols <- setdiff(task$feature_names, 
+plot_cols <- setdiff(task$feature_names,
                      c("district", "field_13", "field_39", "field_7", "field_9", "macv",
                        "province"))
 
+## 4.1. Choose learner
+learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity" )
+print(learner)
+polrn = PipeOpLearner$new(learner)
 
 ## 2.3 Imputation
-pom = PipeOpMissInd$new()
-pon = PipeOpImputeHist$new(id = "imputer_num", param_vals = list(affect_columns = is.numeric))
-pof = PipeOpImputeNewlvl$new(id = "imputer_fct", param_vals = list(affect_columns = is.factor))
+# pom = PipeOpMissInd$new()
+pon = po("imputehist")
+# pon = PipeOpImputeHist$new(id = "imputer_num", param_vals = list(affect_columns = is.numeric))
+pof = po("imputenewlvl")
+# pof = PipeOpImputeNewlvl$new(id = "imputer_fct", param_vals = list(affect_columns = is.factor))
 posample = po("imputesample")
 
 # check imputation
 new_task = posample$train(list(task = task))[[1]]
-new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>% 
-  as.data.table() %>% 
+new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
+  as.data.table() %>%
   inspectdf::inspect_na()
-task$backend$data(rows = train_idx, cols = new_task$feature_names) %>% 
-  as.data.table() %>% 
+task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
+  as.data.table() %>%
   inspectdf::inspect_na()
 
 # ?mlr3pipelines::PipeOpEncode
 # ?mlr3pipelines::PipeOpCollapseFactors
 # ?mlr3pipelines::PipeOpImputeSample
 
-imputer = pom %>>% pon %>>% pof
+# imputer = pom %>>% pon %>>% pof
+# imputer = posample
 imputer = pon %>>% pof
-imputer = posample
-## 2.4 Imbalanced adjustment
-pop = po("smote")
 
+# imputer check
+imputer_task = imputer$train(task)[[1]]
+df_imputer <- imputer_task$backend$data(rows = train_idx, cols = imputer_task$feature_names) %>%
+  as.data.table()
+
+df_imputer %>%
+  inspectdf::inspect_na()
+
+## 2.4 Imbalanced adjustment
+# pop = po("smote")
 opb = po("classbalancing")
-opb$param_set$values = list(ratio = 20, reference = "minor",
+opb$param_set$values = list(ratio = 21, reference = "minor",
                             adjust = "minor", shuffle = FALSE)
 # check result
 result_opb = opb$train(list(task))[[1L]]
@@ -55,29 +71,23 @@ filter = mlr_pipeops$get("filter",
                          filter = mlr3filters::FilterImportance$new(),
                          param_vals = list(filter.frac = 0.5))
 
-
+filter <- flt("importance", learner = learner)
+print(filter)
+new_filter <- filter$calculate(imputer_task)
+head(as.data.table(new_filter), 20)
 # =============================================================================
-# 4. Model create learner
-## 4.1. Choose learner
-
-learner = lrn("classif.ranger", predict_type = "prob" )
-#learner = lrn("classif.rpart", predict_type = "prob")
-
-print(learner)
-polrn = PipeOpLearner$new(learner)
-
 ## 4.2. Make graph
 
-graph = imputer %>>% pop %>>% filter %>>% polrn
-graph = opb %>>% imputer %>>% filter %>>% polrn
+# graph = imputer %>>% pop %>>% filter %>>% polrn
+# graph = opb %>>% imputer %>>% filter %>>% polrn
 graph = opb %>>% imputer %>>% polrn
 graph$plot(html = TRUE) %>% visNetwork::visInteraction()
 
 glrn = GraphLearner$new(graph)
 print(glrn)
 glrn$predict_type <- "prob"
-glrn$param_set$params$classif.ranger.importance <- "impurity"
-glrn$param_set$params$classbalancing.ratio <- 21
+glrn$param_set$params$classif.ranger.importance <- "impurity" # Khong co tac dung
+glrn$param_set$params$classbalancing.ratio <- 22 # Khong co tac dung
 
 ## 4.3. Tuning hypeparameters
 
@@ -87,18 +97,18 @@ library("paradox")
 library("mlr3tuning")
 ### 4.3.1. Tuning strategy
 
-resampling_inner = rsmp("cv", folds = 6)
+resampling_inner = rsmp("cv", folds = 5)
 measures = msr("classif.auc")
 
 glrn$param_set %>% as.data.table()
 ps = ParamSet$new(list(
- # ParamInt$new("classbalancing.ratio", lower = 10, upper = 30),
+  ParamInt$new("classbalancing.ratio", lower = 30, upper = 40),
   ParamInt$new("classif.ranger.num.trees", lower = 50, upper = 100),
   ParamInt$new("classif.ranger.mtry", lower = 10, upper = 20)
 ))
 
 
-terminator = term("evals", n_evals = 100)
+terminator = term("evals", n_evals = 5)
 ### 4.3.2 Tuning
 
 instance = TuningInstance$new(
@@ -121,7 +131,7 @@ instance$result$perf
 instance$archive(unnest = "params")[, c("classbalancing.ratio",
                                           "classif.ranger.num.trees",
                                         "classif.ranger.mtry",
-                                        "classif.auc")] %>% 
+                                        "classif.auc")] %>%
   arrange(-classif.auc)
 
 ### 4.3.3. Re-estimate using tuned hyperparameters
@@ -161,14 +171,14 @@ glrn$predict(task, row_ids = train_idx)$confusion
 glrn$predict(task, row_ids = test_idx) %>% as.data.table() %>% pull(response) %>% table()
 
 # store data
-save(glrn, instance, task, test_idx, train_idx, file = "results/folder_ranger/ranger_03.Rdata")
+save(glrn, instance, task, test_idx, train_idx, file = "results/folder_ranger/ranger_02.Rdata")
 
 # Export predict
 glrn$predict(task, row_ids = test_idx) %>%
   as.data.table() %>%
   select(id = row_id, label = prob.bad) %>%
   mutate(id = id - 1) %>%
-  rio::export("results/folder_ranger/ranger_03.csv")
+  rio::export("results/folder_ranger/ranger_02.csv")
 
 # Tai lap ket qua
-load("results/folder_ranger/ranger_03.Rdata")
+load("results/folder_ranger/ranger_02.Rdata")

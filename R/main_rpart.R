@@ -129,11 +129,11 @@ task$col_roles$feature = setdiff(task$col_roles$feature, c("label", "id"))
 task$col_roles
 
 # split row_roles
-train_set = 1:30000
-test_set = setdiff(seq_len(task$nrow), train_set)
+train_idx = 1:30000
+test_idx = setdiff(seq_len(task$nrow), train_idx)
 
-task$row_roles$use <- train_set
-task$row_roles$validation <- test_set
+task$row_roles$use <- train_idx
+task$row_roles$validation <- test_idx
 
 
 mlr3viz::autoplot(task)
@@ -253,16 +253,16 @@ rr$prediction()$confusion
 rr$prediction() %>% as.data.table() %>% filter(truth == "bad") %>% pull(prob.bad) %>% mean()
 # =============================================================================
 # 5. Predict
-glrn$predict(task, row_ids = test_set)
+glrn$predict(task, row_ids = test_idx)
 
 # check good_bad
-glrn$predict(task, row_ids = test_set) %>% as.data.table() %>% pull(response) %>% table()
+glrn$predict(task, row_ids = test_idx) %>% as.data.table() %>% pull(response) %>% table()
 
 # store data
-save(glrn, task, test_set, train_set, file = "results/folder1/rpart_01.Rdata")
+save(glrn, task, test_idx, train_idx, file = "results/folder1/rpart_01.Rdata")
 
 # Export predict
-glrn$predict(task, row_ids = test_set) %>%
+glrn$predict(task, row_ids = test_idx) %>%
   as.data.table() %>%
   select(id = row_id, label = prob.bad) %>%
   mutate(id = id - 1) %>%
