@@ -89,7 +89,8 @@ filter <- flt("importance", learner = learner)
 
 # graph = imputer %>>% pop %>>% filter %>>% polrn
 # graph = opb %>>% imputer %>>% filter %>>% polrn
-graph = imputer %>>% opb %>>% polrn
+# graph = opb %>>% pof %>>% posample %>>%  polrn
+graph = opb %>>% posample %>>% pof %>>% polrn
 graph$plot(html = TRUE) %>% visNetwork::visInteraction()
 
 glrn = GraphLearner$new(graph)
@@ -97,8 +98,8 @@ print(glrn)
 glrn$predict_type <- "prob"
 glrn$param_set$values$classif.ranger.importance <- "impurity"
 glrn$param_set$values$classbalancing.ratio <- 36
-glrn$param_set$values$classif.ranger.num.trees <- 100
-glrn$param_set$values$classif.ranger.mtry <- 40
+glrn$param_set$values$classif.ranger.num.trees <- 90
+glrn$param_set$values$classif.ranger.mtry <- 30
 
 ## 4.3. Tuning hypeparameters
 
@@ -108,14 +109,14 @@ library("paradox")
 library("mlr3tuning")
 ### 4.3.1. Tuning strategy
 
-resampling_inner = rsmp("cv", folds = 6)
+resampling_inner = rsmp("cv", folds = 5)
 measures = msr("classif.auc")
 
 glrn$param_set %>% as.data.table()
 ps = ParamSet$new(list(
-  # ParamInt$new("classbalancing.ratio", lower = 20, upper = 40),
-  ParamInt$new("classif.ranger.num.trees", lower = 100, upper = 300)
- # ParamInt$new("classif.ranger.mtry", lower = 30, upper = 40)
+  ParamInt$new("classbalancing.ratio", lower = 20, upper = 40)
+  # ParamInt$new("classif.ranger.num.trees", lower = 100, upper = 300)
+  # ParamInt$new("classif.ranger.mtry", lower = 30, upper = 40)
 ))
 
 
