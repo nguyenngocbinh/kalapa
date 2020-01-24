@@ -20,17 +20,21 @@ plot_cols <- setdiff(task$feature_names,
                        "province"))
 
 ## 4.1. Choose learner
-learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity", num.trees = 100, mtry = 40)
+# learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity" )
+learner = lrn("classif.xgboost")
 print(learner)
+learner$param_set %>% as.data.table()
 polrn = PipeOpLearner$new(learner)
 
 ## 2.3 Imputation
-# pom = PipeOpMissInd$new()
+pom = PipeOpMissInd$new()
 pon = po("imputehist")
 # pon = PipeOpImputeHist$new(id = "imputer_num", param_vals = list(affect_columns = is.numeric))
 pof = po("imputenewlvl")
 # pof = PipeOpImputeNewlvl$new(id = "imputer_fct", param_vals = list(affect_columns = is.factor))
 posample = po("imputesample")
+
+poe = po("encode")
 
 # check imputation
 new_task = posample$train(list(task = task))[[1]]
@@ -47,16 +51,12 @@ task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
 
 # imputer = pom %>>% pon %>>% pof
 # imputer = posample
-# imputer = pon %>>% pof
+imputer = pom %>>% pon %>>% pof
 # imputer = list(
 #   po("imputesample"),
 #   po("missind")
 # ) %>>% po("featureunion")
 
-imputer = list(
-  pof %>>% pon,
-  pom
-) %>>% po("featureunion")
 
 # imputer check
 imputer_task = imputer$train(task)[[1]]
@@ -76,29 +76,29 @@ result_opb = opb$train(list(task))[[1L]]
 table(result_opb$truth())
 
 # 3. Feature selection ------------------------------------------------------------
-# filter = mlr_pipeops$get("filter",
-#                          filter = mlr3filters::FilterImportance$new(),
-#                          param_vals = list(filter.frac = 0.5))
-
-filter <- flt("importance", learner = learner)
-# print(filter)
-# new_filter <- filter$calculate(imputer_task)
-# head(as.data.table(new_filter), 20)
+filter = mlr_pipeops$get("filter",
+                         filter = mlr3filters::FilterImportance$new(),
+                         param_vals = list(filter.frac = 0.2, xval = 5))
+# filter = flt("auc")
+# filter <- flt("importance", learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity"))
+#print(filter)
+#new_filter <- filter$calculate(imputer_task)
+#head(as.data.table(new_filter), 20)
+#sel_importance <- head(as.data.table(new_filter), 10)$feature
 # =============================================================================
 ## 4.2. Make graph
 
 # graph = imputer %>>% pop %>>% filter %>>% polrn
 # graph = opb %>>% imputer %>>% filter %>>% polrn
-graph = imputer %>>% opb %>>% polrn
+graph = opb %>>% imputer %>>% filter %>>%  poe %>>%  polrn
 graph$plot(html = TRUE) %>% visNetwork::visInteraction()
 
 glrn = GraphLearner$new(graph)
 print(glrn)
 glrn$predict_type <- "prob"
-glrn$param_set$values$classif.ranger.importance <- "impurity"
-glrn$param_set$values$classbalancing.ratio <- 21
-glrn$param_set$values$classif.ranger.num.trees <- 100
-glrn$param_set$values$classif.ranger.mtry <- 40
+# glrn$param_set$params$classif.ranger.importance <- "impurity" # Khong co tac dung
+glrn$param_set$values$classbalancing.ratio <- 22
+
 
 ## 4.3. Tuning hypeparameters
 
@@ -113,17 +113,19 @@ measures = msr("classif.auc")
 
 glrn$param_set %>% as.data.table()
 ps = ParamSet$new(list(
-  ParamInt$new("classbalancing.ratio", lower = 20, upper = 40)
+  ParamInt$new("classbalancing.ratio", lower = 15, upper = 20)
   # ParamInt$new("classif.ranger.num.trees", lower = 70, upper = 90),
- # ParamInt$new("classif.ranger.mtry", lower = 30, upper = 40)
+  # ParamInt$new("classif.ranger.mtry", lower = 10, upper = 40)
 ))
 
 
-terminator = term("evals", n_evals = 20)
+terminator = term("evals", n_evals = 2)
 ### 4.3.2 Tuning
 
+sel_task = task$clone()$select(c("district", "field_10", "field_12", "field_13", "field_17", "field_18", "field_19", "field_20", "field_23", "field_24"))
+
 instance = TuningInstance$new(
-  task = task,
+  task = sel_task,
   learner = glrn,
   resampling = resampling_inner,
   measures = measures,
@@ -131,8 +133,8 @@ instance = TuningInstance$new(
   terminator = terminator
 )
 
-#tuner = TunerRandomSearch$new()
-tuner = TunerGridSearch$new()
+tuner = TunerRandomSearch$new()
+# tuner = TunerGridSearch$new()
 # tuner = TunerGenSA$new()
 tuner$tune(instance)
 
@@ -140,7 +142,7 @@ tuner$tune(instance)
 instance$result
 instance$result$perf
 instance$archive(unnest = "params")[, c("classbalancing.ratio",
-                                        "classif.ranger.num.trees",
+                                          "classif.ranger.num.trees",
                                         "classif.ranger.mtry",
                                         "classif.auc")] %>%
   arrange(-classif.auc)
