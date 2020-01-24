@@ -100,7 +100,7 @@ f_clean_df <- function(df) {
     rename_all(tolower) %>%
     mutate(field_11 = as.numeric(na_if(field_11, "None")),
            field_9 = na_if(field_9, "na"),
-           age_source1 = ifelse(is.na(age_source1), age_source2, age_source1),
+           age = ifelse(is.na(age_source1), age_source2, age_source1),
            label_fct = if_else(label == 1, "bad", "good")) %>%
     mutate_if(is.character, as.factor) %>%
     mutate_if(is.logical, as.factor) %>%

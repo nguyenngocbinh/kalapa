@@ -25,7 +25,7 @@ print(learner)
 polrn = PipeOpLearner$new(learner)
 
 ## 2.3 Imputation
-# pom = PipeOpMissInd$new()
+pom = PipeOpMissInd$new()
 pon = po("imputehist")
 # pon = PipeOpImputeHist$new(id = "imputer_num", param_vals = list(affect_columns = is.numeric))
 pof = po("imputenewlvl")
@@ -33,7 +33,7 @@ pof = po("imputenewlvl")
 posample = po("imputesample")
 
 # check imputation
-new_task = posample$train(list(task = task))[[1]]
+new_task = posample$train(list(task = task$clone()))[[1]]
 new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
   as.data.table() %>%
   inspectdf::inspect_na()
@@ -59,7 +59,7 @@ imputer = list(
 ) %>>% po("featureunion")
 
 # imputer check
-imputer_task = imputer$train(task)[[1]]
+imputer_task = imputer$train(task$clone())[[1]]
 df_imputer <- imputer_task$backend$data(rows = train_idx, cols = imputer_task$feature_names) %>%
   as.data.table()
 
@@ -69,7 +69,7 @@ df_imputer %>%
 ## 2.4 Imbalanced adjustment
 # pop = po("smote")
 opb = po("classbalancing")
-opb$param_set$values = list(ratio = 21, reference = "minor",
+opb$param_set$values = list(ratio = 20, reference = "minor",
                             adjust = "minor", shuffle = FALSE)
 # check result
 result_opb = opb$train(list(task))[[1L]]
@@ -80,7 +80,12 @@ table(result_opb$truth())
 #                          filter = mlr3filters::FilterImportance$new(),
 #                          param_vals = list(filter.frac = 0.5))
 
-filter <- flt("importance", learner = learner)
+filter = mlr_pipeops$get("filter",
+                         filter = mlr3filters::FilterInformationGain$new(),
+                         param_vals = list(filter.frac = 0.5))
+
+# filter <- flt("importance", learner = learner)
+
 # print(filter)
 # new_filter <- filter$calculate(imputer_task)
 # head(as.data.table(new_filter), 20)
@@ -90,7 +95,7 @@ filter <- flt("importance", learner = learner)
 # graph = imputer %>>% pop %>>% filter %>>% polrn
 # graph = opb %>>% imputer %>>% filter %>>% polrn
 # graph = opb %>>% pof %>>% posample %>>%  polrn
-graph = opb %>>% posample %>>% pof %>>% polrn
+graph = opb %>>% pof %>>% posample  %>>% filter %>>%  polrn
 graph$plot(html = TRUE) %>% visNetwork::visInteraction()
 
 glrn = GraphLearner$new(graph)
@@ -114,7 +119,7 @@ measures = msr("classif.auc")
 
 glrn$param_set %>% as.data.table()
 ps = ParamSet$new(list(
-  ParamInt$new("classbalancing.ratio", lower = 20, upper = 40)
+  ParamInt$new("classbalancing.ratio", lower = 30, upper = 40)
   # ParamInt$new("classif.ranger.num.trees", lower = 100, upper = 300)
   # ParamInt$new("classif.ranger.mtry", lower = 30, upper = 40)
 ))
@@ -135,6 +140,7 @@ instance = TuningInstance$new(
 #tuner = TunerRandomSearch$new()
 tuner = TunerGridSearch$new()
 # tuner = TunerGenSA$new()
+set.seed(158)
 tuner$tune(instance)
 
 ## result
@@ -183,14 +189,14 @@ glrn$predict(task, row_ids = train_idx)$confusion
 glrn$predict(task, row_ids = test_idx) %>% as.data.table() %>% pull(response) %>% table()
 
 # store data
-save(glrn, instance, task, test_idx, train_idx, file = "results/folder_ranger/ranger_03.Rdata")
+save(glrn, instance, task, test_idx, train_idx, file = "results/folder_ranger/ranger_05.Rdata")
 
 # Export predict
 glrn$predict(task, row_ids = test_idx) %>%
   as.data.table() %>%
   select(id = row_id, label = prob.bad) %>%
   mutate(id = id - 1) %>%
-  rio::export("results/folder_ranger/ranger_03.csv")
+  rio::export("results/folder_ranger/ranger_05.csv")
 
 # Tai lap ket qua
-load("results/folder_ranger/ranger_03.Rdata")
+load("results/folder_ranger/ranger_05.Rdata")
