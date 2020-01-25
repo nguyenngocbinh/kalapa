@@ -82,7 +82,9 @@ table(result_opb$truth())
 
 filter = mlr_pipeops$get("filter",
                          filter = mlr3filters::FilterInformationGain$new(),
-                         param_vals = list(filter.frac = 0.5))
+                         param_vals = list(filter.nfeat = 30 # filter.frac = 0.5
+                                           )
+                         )
 
 # filter <- flt("importance", learner = learner)
 
@@ -102,8 +104,8 @@ glrn = GraphLearner$new(graph)
 print(glrn)
 glrn$predict_type <- "prob"
 glrn$param_set$values$classif.ranger.importance <- "impurity"
-glrn$param_set$values$classbalancing.ratio <- 36
-glrn$param_set$values$classif.ranger.num.trees <- 90
+glrn$param_set$values$classbalancing.ratio <- 27
+glrn$param_set$values$classif.ranger.num.trees <- 190
 glrn$param_set$values$classif.ranger.mtry <- 30
 
 ## 4.3. Tuning hypeparameters
@@ -114,12 +116,13 @@ library("paradox")
 library("mlr3tuning")
 ### 4.3.1. Tuning strategy
 
-resampling_inner = rsmp("cv", folds = 5)
+resampling_inner = rsmp("cv", folds = 10)
 measures = msr("classif.auc")
 
 glrn$param_set %>% as.data.table()
 ps = ParamSet$new(list(
-  ParamInt$new("classbalancing.ratio", lower = 30, upper = 40)
+  # ParamInt$new("classbalancing.ratio", lower = 25, upper = 30)
+  ParamInt$new("information_gain.filter.nfeat", lower = 30, upper = 40)
   # ParamInt$new("classif.ranger.num.trees", lower = 100, upper = 300)
   # ParamInt$new("classif.ranger.mtry", lower = 30, upper = 40)
 ))
