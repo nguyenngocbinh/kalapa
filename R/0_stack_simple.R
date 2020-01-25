@@ -30,7 +30,7 @@ opb$param_set$values = list(ratio = 20, reference = "minor",
                             adjust = "minor", shuffle = FALSE)
 
 # Learner --------------------------------------------------------------------
-lnr_ranger = lrn("classif.ranger", predict_type = "prob", num.trees = 100)
+lnr_ranger = lrn("classif.ranger", predict_type = "prob", num.trees = 122)
 lnr_xgboost = lrn("classif.xgboost", predict_type = "prob")
 ponop = PipeOpNOP$new()
 
