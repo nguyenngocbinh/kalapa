@@ -3,7 +3,7 @@ lapply(pkgs, function(pk) require(pk, character.only = TRUE))
 
 ## 2.2 create classif task
 load("data/task_classif.Rdata")
-task$col_roles$feature = setdiff(task$col_roles$feature, c("label", "id"))
+task$col_roles$feature = setdiff(task$col_roles$feature, c("label", "id", "age_source1", "age_source2"))
 task$col_roles
 
 # split row_roles

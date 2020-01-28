@@ -36,14 +36,14 @@ opb$param_set$values = list(ratio = 40, reference = "minor",
 # Learner --------------------------------------------------------------------
 lnr_ranger = lrn("classif.ranger", predict_type = "prob", num.trees = 122)
 lnr_xgboost = lrn("classif.xgboost", predict_type = "response", scale_pos_weight = 30)
-lnr_kknn = lrn("classif.kknn", predict_type = "response")
+
 ponop = PipeOpNOP$new()
 
 #  Create Learner CV Operators
 glnr_ranger_0 = PipeOpLearnerCV$new(lnr_ranger, id = "glnr_ranger_0")
 glnr_xgboost_0 = PipeOpLearnerCV$new(lnr_xgboost, id = "glnr_xgboost_0")
 glnr_xgboost_1 = PipeOpLearnerCV$new(lnr_xgboost, id = "glnr_xgboost_1")
-glrn_kknn_0 = PipeOpLearnerCV$new(lnr_kknn, id = "glrn_kknn_0")
+
 
 # main learner
 glnr_main = PipeOpLearner$new(lnr_ranger, id = "main_ranger")

@@ -115,6 +115,7 @@ f_clean_df <- function(df) {
     bind_rows(df_na) %>%
     mutate(label_fct = if_else(label == 1, "bad", "good"))%>%
     mutate_if(is.character, as.factor) %>%
+    arrange(id) %>%
     as.data.table()
 
   return(cleaned_df)
@@ -140,4 +141,4 @@ task = TaskClassif$new(id = "kalapa", backend = cleaned_dset, target = "label_fc
 train_idx = 1:30000
 test_idx = setdiff(seq_len(task$nrow), train_idx)
 
-save(task, train_idx, test_idx, file = "data/task_classif.Rdata")
+save(dset, cleaned_dset, task, train_idx, test_idx, file = "data/task_classif.Rdata")
