@@ -1,7 +1,7 @@
 # First: 15-jan-2020
-# Update: 20-jan-2020
+# Update: 28-jan-2020
 # Author: NNB
-# Purpose: Using rpart to train model
+# Purpose: Prepare data for model
 # =============================================================================
 
 # Instruction
@@ -32,11 +32,11 @@ to.install <- setdiff(cran.packages, have.packages[, 1])
 if (length(to.install) > 0) install.packages(to.install)
 
 # Load packages
-pkgs <- c("readr", "dplyr", "inspectdf", "data.table", "mlr3verse", "mlr3viz")
+pkgs <- c("readr", "dplyr", "tidyr", "inspectdf", "data.table", "mlr3verse", "mlr3viz")
 lapply(pkgs, function(pk) require(pk, character.only = TRUE))
 
 # ============================================================================= Import data
-
+rm(list = ls())
 col_types <- cols(id = col_double(), province = col_character(), district = col_character(), age_source1 = col_double(),
                   age_source2 = col_double(), maCv = col_character(), FIELD_1 = col_double(), FIELD_2 = col_double(), FIELD_3 = col_double(),
                   FIELD_4 = col_double(), FIELD_5 = col_double(), FIELD_6 = col_double(), FIELD_7 = col_character(), FIELD_8 = col_character(),
@@ -96,15 +96,25 @@ f_check_range(train, "check_range_train")
 ## 2.1. Clean data
 # Export to excel to check
 f_clean_df <- function(df) {
-  cleaned_df <- df %>%
+  df <-  df %>%
     rename_all(tolower) %>%
     mutate(field_11 = as.numeric(na_if(field_11, "None")),
-           field_9 = na_if(field_9, "na"),
-           age = ifelse(is.na(age_source1), age_source2, age_source1),
-           label_fct = if_else(label == 1, "bad", "good")) %>%
+           field_9 = field_9 %>% na_if("na") %>% replace_na("MISSING"),
+           age = ifelse(is.na(age_source1), age_source2, age_source1)) %>%
+    mutate_if(is.factor, as.character) %>%
+    mutate_if(is.logical, as.character)
+
+  df_non_na <- df %>%
+    filter(field_9 != "MISSING")
+
+  df_na <- df %>%
+    filter(field_9 == "MISSING") %>%
+    mutate_if(is.character, replace_na, "MISSING")
+
+  cleaned_df <- df_non_na %>%
+    bind_rows(df_na) %>%
+    mutate(label_fct = if_else(label == 1, "bad", "good"))%>%
     mutate_if(is.character, as.factor) %>%
-    mutate_if(is.logical, as.factor) %>%
-    select(-age_source2) %>%
     as.data.table()
 
   return(cleaned_df)
