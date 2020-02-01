@@ -1,4 +1,4 @@
-pkgs <- c("readr", "dplyr", "inspectdf", "data.table", "mlr3verse", "mlr3viz")
+pkgs <- c( "dplyr", "data.table", "mlr3verse", "mlr3viz", "paradox", "mlr3tuning")
 lapply(pkgs, function(pk) require(pk, character.only = TRUE))
 
 ## 2.2 create classif task
@@ -14,7 +14,7 @@ task$row_roles$use <- train_idx
 task$row_roles$validation <- test_idx
 print(task)
 
-mlr3viz::autoplot(task)
+#mlr3viz::autoplot(task, type = "pairs")
 plot_cols <- setdiff(task$feature_names,
                      c("district", "field_13", "field_39", "field_7", "field_9", "macv",
                        "province"))
@@ -33,13 +33,13 @@ pof = po("imputenewlvl")
 posample = po("imputesample")
 
 # check imputation
-new_task = posample$train(list(task = task$clone()))[[1]]
-new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
-  as.data.table() %>%
-  inspectdf::inspect_na()
-task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
-  as.data.table() %>%
-  inspectdf::inspect_na()
+# new_task = posample$train(list(task = task$clone()))[[1]]
+# new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
+#   as.data.table() %>%
+#   inspectdf::inspect_na()
+# task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
+#   as.data.table() %>%
+#   inspectdf::inspect_na()
 
 # ?mlr3pipelines::PipeOpEncode
 # ?mlr3pipelines::PipeOpCollapseFactors
@@ -59,21 +59,21 @@ imputer = list(
 ) %>>% po("featureunion")
 
 # imputer check
-imputer_task = imputer$train(task$clone())[[1]]
-df_imputer <- imputer_task$backend$data(rows = train_idx, cols = imputer_task$feature_names) %>%
-  as.data.table()
-
-df_imputer %>%
-  inspectdf::inspect_na()
+# imputer_task = imputer$train(task$clone())[[1]]
+# df_imputer <- imputer_task$backend$data(rows = train_idx, cols = imputer_task$feature_names) %>%
+#   as.data.table()
+#
+# df_imputer %>%
+#   inspectdf::inspect_na()
 
 ## 2.4 Imbalanced adjustment
-# pop = po("smote")
+pop = po("smote")
 opb = po("classbalancing")
 opb$param_set$values = list(ratio = 20, reference = "minor",
                             adjust = "minor", shuffle = FALSE)
 # check result
-result_opb = opb$train(list(task))[[1L]]
-table(result_opb$truth())
+# result_opb = opb$train(list(task))[[1L]]
+# table(result_opb$truth())
 
 # 3. Feature selection ------------------------------------------------------------
 # filter = mlr_pipeops$get("filter",
@@ -98,7 +98,7 @@ filter = mlr_pipeops$get("filter",
 # graph = opb %>>% imputer %>>% filter %>>% polrn
 # graph = opb %>>% pof %>>% posample %>>%  polrn
 # graph = opb %>>% pof %>>% posample  %>>% filter %>>%  polrn
-graph = opb %>>%  polrn
+graph = pop %>>%  polrn
 graph$plot(html = TRUE) %>% visNetwork::visInteraction()
 
 glrn = GraphLearner$new(graph)
@@ -112,9 +112,6 @@ glrn$param_set$values$classif.ranger.importance <- "impurity"
 ## 4.3. Tuning hypeparameters
 
 ### 4.3.1. Tuning strategy
-
-library("paradox")
-library("mlr3tuning")
 ### 4.3.1. Tuning strategy
 
 resampling_inner = rsmp("cv", folds = 3)
@@ -122,7 +119,8 @@ measures = msr("classif.auc")
 
 glrn$param_set %>% as.data.table()
 ps = ParamSet$new(list(
-  ParamInt$new("classbalancing.ratio", lower = 1, upper = 15),
+  # ParamInt$new("classbalancing.ratio", lower = 1, upper = 15),
+  ParamInt$new("smote.K", lower = 1, upper = 6),
   # ParamInt$new("information_gain.filter.nfeat", lower = 30, upper = 40)
   ParamInt$new("classif.ranger.num.trees", lower = 300, upper = 600)
   # ParamInt$new("classif.ranger.mtry", lower = 30, upper = 40)
@@ -150,12 +148,12 @@ tuner$tune(instance)
 ## result
 instance$result
 instance$result$perf
-instance$archive(unnest = "params")[, c("classbalancing.ratio",
+instance$archive(unnest = "params")[, c("smote.K",
                                         "classif.ranger.num.trees",
                                         "classif.auc")] %>%
   arrange(-classif.auc)
 
-instance$archive(unnest = "params")[, c("classbalancing.ratio",
+instance$archive(unnest = "params")[, c("smote.K",
                                         "classif.ranger.num.trees",
                                         "classif.auc")] %>%
   cor()
@@ -163,47 +161,68 @@ instance$archive(unnest = "params")[, c("classbalancing.ratio",
 glrn$param_set$values = instance$result$params
 glrn$train(task)
 
-## 4.4. Auto tuner to evaluate performance
-library(mlr3tuning)
-tuner = tnr("grid_search", resolution = 10)
-tuner = tnr("random_search")
-at = AutoTuner$new(learner = glrn,
-                   resampling = resampling_inner,
-                   measures = measures,
-                   tune_ps = ps,
-                   terminator = terminator,
-                   tuner = tuner)
 
-resampling_outer = rsmp("cv", folds = 3)
-rr = resample(task = task,
-              learner = at,
-              resampling = resampling_outer,
-              store_models = TRUE)
 
-# learner hyperparameters are stored in at
-rr$aggregate()
-rr$errors
-rr$prediction()
-rr$prediction()$confusion
-
-rr$prediction() %>% as.data.table() %>% filter(truth == "bad") %>% pull(prob.bad) %>% mean()
 # =============================================================================
 # 5. Predict
 glrn$predict(task, row_ids = test_idx)
 
 # check good_bad
 glrn$predict(task, row_ids = train_idx)$confusion
-glrn$predict(task, row_ids = test_idx) %>% as.data.table() %>% pull(response) %>% table()
 
 # store data
-save(glrn, instance, task, test_idx, train_idx, file = "results/folder_ranger/ranger_06.Rdata")
+save(glrn, instance, task, test_idx, train_idx, file = "results/ranger_classif_woe.Rdata")
 
 # Export predict
 glrn$predict(task, row_ids = test_idx) %>%
   as.data.table() %>%
-  select(id = row_id, label = prob.bad) %>%
+  select(id = row_id, label = prob.1) %>%
   mutate(id = id - 1) %>%
-  rio::export("results/folder_ranger/ranger_06.csv")
+  rio::export("results/ranger_classif_woe.csv")
 
-# Tai lap ket qua
-load("results/folder_ranger/ranger_05.Rdata")
+## 4.4. Auto tuner to evaluate performance
+library(mlr3tuning)
+tuner = tnr("grid_search", resolution = 10)
+# tuner = tnr("random_search")
+at = AutoTuner$new(learner = glrn,
+                   resampling = rsmp("holdout"), # resampling_inner,
+                   measures = measures,
+                   tune_ps = ps,
+                   terminator = terminator,
+                   tuner = tuner)
+
+at$train(task)
+at$model
+at$learner
+at$predict(task, row_ids = test_idx)
+
+at$predict(task, row_ids = test_idx) %>%
+  as.data.table() %>%
+  select(id = row_id, label = response) %>%
+  mutate(id = id - 1) %>%
+  rio::export("results/folder_ranger/ranger_reg.csv")
+
+resampling_outer = rsmp("cv", folds = 3)
+# rr = resample(task = task,
+#               learner = list(at, glrn),
+#               resampling = resampling_outer,
+#               store_models = TRUE)
+#
+# # learner hyperparameters are stored in at
+# rr$aggregate()
+# rr$errors
+# rr$prediction()
+# rr$prediction()$confusion
+#
+# rr$prediction() %>% as.data.table() %>% filter(truth == "bad") %>% pull(prob.bad) %>% mean()
+
+# benchmark
+
+grid = benchmark_grid(
+  task = task,
+  learner = list(at, glrn),
+  resampling = resampling_outer
+)
+bmr = benchmark(grid)
+bmr$aggregate(measures)
+

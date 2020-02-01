@@ -2,8 +2,8 @@ pkgs <- c("readr", "dplyr", "inspectdf", "data.table", "mlr3verse", "mlr3viz")
 lapply(pkgs, function(pk) require(pk, character.only = TRUE))
 
 ## 2.2 create classif task
-load("data/task_classif.Rdata")
-task$col_roles$feature = setdiff(task$col_roles$feature, c("id", "age_source1_woe", "age_source2_woe", "field_23_woe"))
+load("data/task_reg.Rdata")
+task$col_roles$feature = setdiff(task$col_roles$feature, c("id", "age_source1_bin", "age_source2_bin", "field_23_bin"))
 task$col_roles
 
 # split row_roles
@@ -20,7 +20,7 @@ plot_cols <- setdiff(task$feature_names,
                        "province"))
 
 ## 4.1. Choose learner
-learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity", num.trees = 100)
+learner = lrn("regr.ranger", predict_type = "response", importance = "impurity", num.trees = 100)
 print(learner)
 polrn = PipeOpLearner$new(learner)
 
@@ -33,13 +33,13 @@ pof = po("imputenewlvl")
 posample = po("imputesample")
 
 # check imputation
-new_task = posample$train(list(task = task$clone()))[[1]]
-new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
-  as.data.table() %>%
-  inspectdf::inspect_na()
-task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
-  as.data.table() %>%
-  inspectdf::inspect_na()
+# new_task = posample$train(list(task = task$clone()))[[1]]
+# new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
+#   as.data.table() %>%
+#   inspectdf::inspect_na()
+# task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
+#   as.data.table() %>%
+#   inspectdf::inspect_na()
 
 # ?mlr3pipelines::PipeOpEncode
 # ?mlr3pipelines::PipeOpCollapseFactors
@@ -59,21 +59,21 @@ imputer = list(
 ) %>>% po("featureunion")
 
 # imputer check
-imputer_task = imputer$train(task$clone())[[1]]
-df_imputer <- imputer_task$backend$data(rows = train_idx, cols = imputer_task$feature_names) %>%
-  as.data.table()
-
-df_imputer %>%
-  inspectdf::inspect_na()
+# imputer_task = imputer$train(task$clone())[[1]]
+# df_imputer <- imputer_task$backend$data(rows = train_idx, cols = imputer_task$feature_names) %>%
+#   as.data.table()
+#
+# df_imputer %>%
+#   inspectdf::inspect_na()
 
 ## 2.4 Imbalanced adjustment
-# pop = po("smote")
-opb = po("classbalancing")
-opb$param_set$values = list(ratio = 20, reference = "minor",
-                            adjust = "minor", shuffle = FALSE)
+pop = po("smote")
+# opb = po("classbalancing")
+# opb$param_set$values = list(ratio = 20, reference = "minor",
+#                             adjust = "minor", shuffle = FALSE)
 # check result
-result_opb = opb$train(list(task))[[1L]]
-table(result_opb$truth())
+# result_opb = opb$train(list(task$clone()))[[1L]]
+# table(result_opb$truth())
 
 # 3. Feature selection ------------------------------------------------------------
 # filter = mlr_pipeops$get("filter",
@@ -82,8 +82,7 @@ table(result_opb$truth())
 
 filter = mlr_pipeops$get("filter",
                          filter = mlr3filters::FilterInformationGain$new(),
-                         param_vals = list(filter.nfeat = 30 # filter.frac = 0.5
-                                           )
+                         param_vals = list(filter.frac = 0.5, type = "infogain")
                          )
 
 # filter <- flt("importance", learner = learner)
@@ -98,13 +97,13 @@ filter = mlr_pipeops$get("filter",
 # graph = opb %>>% imputer %>>% filter %>>% polrn
 # graph = opb %>>% pof %>>% posample %>>%  polrn
 # graph = opb %>>% pof %>>% posample  %>>% filter %>>%  polrn
-graph = opb %>>%  polrn
+graph = filter %>>% polrn
 graph$plot(html = TRUE) %>% visNetwork::visInteraction()
 
 glrn = GraphLearner$new(graph)
 print(glrn)
-glrn$predict_type <- "prob"
-glrn$param_set$values$classif.ranger.importance <- "impurity"
+# glrn$predict_type <- "prob"
+# glrn$param_set$values$classif.ranger.importance <- "impurity"
 # glrn$param_set$values$classbalancing.ratio <- 27
 # glrn$param_set$values$classif.ranger.num.trees <- 190
 # glrn$param_set$values$classif.ranger.mtry <- 30
@@ -118,13 +117,13 @@ library("mlr3tuning")
 ### 4.3.1. Tuning strategy
 
 resampling_inner = rsmp("cv", folds = 3)
-measures = msr("classif.auc")
+measures = msr("regr.mse")
 
 glrn$param_set %>% as.data.table()
 ps = ParamSet$new(list(
-  ParamInt$new("classbalancing.ratio", lower = 1, upper = 15),
-  # ParamInt$new("information_gain.filter.nfeat", lower = 30, upper = 40)
-  ParamInt$new("classif.ranger.num.trees", lower = 300, upper = 600)
+  ParamDbl$new("information_gain.filter.frac", lower = .8, upper = .9),
+  # ParamInt$new("smote.K", lower = 3, upper = 6),
+  ParamInt$new("regr.ranger.num.trees", lower = 300, upper = 600)
   # ParamInt$new("classif.ranger.mtry", lower = 30, upper = 40)
 ))
 
@@ -150,33 +149,63 @@ tuner$tune(instance)
 ## result
 instance$result
 instance$result$perf
-instance$archive(unnest = "params")[, c("classbalancing.ratio",
-                                        "classif.ranger.num.trees",
-                                        "classif.auc")] %>%
-  arrange(-classif.auc)
+instance$archive(unnest = "params")[, c("information_gain.filter.frac",
+                                        "regr.ranger.num.trees",
+                                        "regr.mse")] %>%
+  arrange(regr.mse)
 
-instance$archive(unnest = "params")[, c("classbalancing.ratio",
-                                        "classif.ranger.num.trees",
-                                        "classif.auc")] %>%
+instance$archive(unnest = "params")[, c("information_gain.filter.frac",
+                                        "regr.ranger.num.trees",
+                                        "regr.mse")] %>%
   cor()
 ### 4.3.3. Re-estimate using tuned hyperparameters
 glrn$param_set$values = instance$result$params
 glrn$train(task)
 
+
+# =============================================================================
+# 5. Predict
+glrn$predict(task, row_ids = test_idx)
+
+# check good_bad
+prediction <- glrn$predict(task, row_ids = train_idx)
+glrn$predict(task, row_ids = test_idx) %>% as.data.table() %>% pull(response) %>% mean()
+
+# store data
+save(glrn, instance, task, test_idx, train_idx, file = "results/folder_ranger/ranger_reg.Rdata")
+
+# Export predict
+glrn$predict(task, row_ids = test_idx) %>%
+  as.data.table() %>%
+  select(id = row_id, label = response) %>%
+  mutate(id = id - 1) %>%
+  rio::export("results/folder_ranger/ranger_reg.csv")
+
 ## 4.4. Auto tuner to evaluate performance
 library(mlr3tuning)
 tuner = tnr("grid_search", resolution = 10)
-tuner = tnr("random_search")
+# tuner = tnr("random_search")
 at = AutoTuner$new(learner = glrn,
-                   resampling = resampling_inner,
+                   resampling = rsmp("holdout"), # resampling_inner,
                    measures = measures,
                    tune_ps = ps,
                    terminator = terminator,
                    tuner = tuner)
 
+at$train(task)
+at$model
+at$learner
+at$predict(task, row_ids = test_idx)
+
+at$predict(task, row_ids = test_idx) %>%
+  as.data.table() %>%
+  select(id = row_id, label = response) %>%
+  mutate(id = id - 1) %>%
+  rio::export("results/folder_ranger/ranger_reg.csv")
+
 resampling_outer = rsmp("cv", folds = 3)
 rr = resample(task = task,
-              learner = at,
+              learner = list(at, glrn),
               resampling = resampling_outer,
               store_models = TRUE)
 
@@ -187,23 +216,13 @@ rr$prediction()
 rr$prediction()$confusion
 
 rr$prediction() %>% as.data.table() %>% filter(truth == "bad") %>% pull(prob.bad) %>% mean()
-# =============================================================================
-# 5. Predict
-glrn$predict(task, row_ids = test_idx)
 
-# check good_bad
-glrn$predict(task, row_ids = train_idx)$confusion
-glrn$predict(task, row_ids = test_idx) %>% as.data.table() %>% pull(response) %>% table()
+# benchmark
 
-# store data
-save(glrn, instance, task, test_idx, train_idx, file = "results/folder_ranger/ranger_06.Rdata")
-
-# Export predict
-glrn$predict(task, row_ids = test_idx) %>%
-  as.data.table() %>%
-  select(id = row_id, label = prob.bad) %>%
-  mutate(id = id - 1) %>%
-  rio::export("results/folder_ranger/ranger_06.csv")
-
-# Tai lap ket qua
-load("results/folder_ranger/ranger_05.Rdata")
+grid = benchmark_grid(
+  task = task,
+  learner = list(at, glrn),
+  resampling = resampling_outer
+)
+bmr = benchmark(grid)
+bmr$aggregate(measures)

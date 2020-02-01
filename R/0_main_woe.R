@@ -1,7 +1,7 @@
 # First: 15-jan-2020
 # Update: 28-jan-2020
 # Author: NNB
-# Purpose: Prepare data for model
+# Purpose: Prepare data for regression model
 # =============================================================================
 
 # Instruction
@@ -113,16 +113,16 @@ f_clean_df <- function(df) {
 
   bind_df <- df_non_na %>%
     bind_rows(df_na) %>%
-    mutate(label_fct = if_else(label == 1, "bad", "good"))%>%
+    # mutate(label_fct = if_else(label == 1, "bad", "good"))%>%
     mutate_if(is.character, as.factor) %>%
     arrange(id) %>% # Note
     as.data.table()
 
   bind_df <- scorecard::replace_na(bind_df, repl = "median")
 
-  bins <- scorecard::woebin(bind_df, y = "label", var_skip = c("label_fct", "id"), check_cate_num = FALSE)
+  bins <- scorecard::woebin(bind_df, y = "label", var_skip = c("id"), bin_num_limit = 10, check_cate_num = FALSE)
 
-  cleaned_df <- scorecard::woebin_ply(bind_df, bins = bins, to = "bin")
+  cleaned_df <- scorecard::woebin_ply(bind_df, bins = bins, to = "woe")
 
   cleaned_df <- cleaned_df %>% mutate_if(is.character, as.factor)
 
@@ -144,9 +144,18 @@ character_vars <- train %>% select_if(is.character) %>% names()
 logical_vars <- train %>% select_if(is.logical) %>% names()
 
 
-## 2.2 create classif task
-task = TaskClassif$new(id = "kalapa", backend = cleaned_dset, target = "label_fct", positive = "bad")
+## 2.2 create reg task
+task = TaskRegr$new(id = "kalapa", backend = cleaned_dset, target = "label")
 train_idx = 1:30000
 test_idx = setdiff(seq_len(task$nrow), train_idx)
+
+save(dset, cleaned_dset, task, train_idx, test_idx, file = "data/task_reg.Rdata")
+
+## 2.2 create classif task
+
+cleaned_dset <- cleaned_dset %>%
+  mutate(label = as.factor(label))
+
+task = TaskClassif$new(id = "kalapa", backend = cleaned_dset, target = "label")
 
 save(dset, cleaned_dset, task, train_idx, test_idx, file = "data/task_classif.Rdata")

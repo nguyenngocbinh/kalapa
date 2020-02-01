@@ -3,7 +3,7 @@ lapply(pkgs, function(pk) require(pk, character.only = TRUE))
 # task -----------------------------------------------------------------------
 
 load("data/task_classif.Rdata")
-task$col_roles$feature = setdiff(task$col_roles$feature, c("label", "id", "age_source1", "age_source2"))
+task$col_roles$feature = setdiff(task$col_roles$feature, c("label", "id", "age_source1", "age_source2", "field_23"))
 task$col_roles
 
 # split row_roles
@@ -78,14 +78,14 @@ ps = ParamSet$new(list(
   ParamInt$new("glnr_xgboost_1.max_depth", lower = 45, upper = 50),
   ParamDbl$new("glnr_xgboost_1.eta", lower = .01, upper = .1),
   ParamInt$new("glnr_xgboost_1.gamma", lower = 3, upper = 7),
-  ParamInt$new("classbalancing.ratio", lower = 25, upper = 29),
-  ParamInt$new("main_ranger.num.trees", lower = 250, upper = 350)
+  ParamInt$new("classbalancing.ratio", lower = 20, upper = 29),
+  ParamInt$new("main_ranger.num.trees", lower = 500, upper = 700)
   # ParamInt$new("main_ranger.mtry", lower = 30, upper = 40)
 ))
 
 resampling_inner = rsmp("cv", folds = 3)
 measures = msr("classif.auc")
-terminator = term("evals", n_evals = 50)
+terminator = term("evals", n_evals = 20)
 ### 4.3.2 Tuning
 
 instance = TuningInstance$new(
@@ -105,10 +105,11 @@ tuner$tune(instance)
 
 instance$result
 
-instance$archive(unnest = "params")[, c("glnr_xgboost_0.scale_pos_weight",
-                                        "glnr_xgboost_0.max_depth",
-                                        "glnr_xgboost_0.eta",
-                                        "glnr_xgboost_0.gamma",
+instance$archive(unnest = "params")[, c(
+  # "glnr_xgboost_0.scale_pos_weight",
+  #                                       "glnr_xgboost_0.max_depth",
+  #                                       "glnr_xgboost_0.eta",
+  #                                       "glnr_xgboost_0.gamma",
                                         "glnr_xgboost_1.scale_pos_weight",
                                         "glnr_xgboost_1.max_depth",
                                         "glnr_xgboost_1.eta",
@@ -118,10 +119,11 @@ instance$archive(unnest = "params")[, c("glnr_xgboost_0.scale_pos_weight",
                                         "classif.auc")]  %>%
   arrange(-classif.auc)
 
-instance$archive(unnest = "params")[, c("glnr_xgboost_0.scale_pos_weight",
-                                        "glnr_xgboost_0.max_depth",
-                                        "glnr_xgboost_0.eta",
-                                        "glnr_xgboost_0.gamma",
+instance$archive(unnest = "params")[, c(
+  # "glnr_xgboost_0.scale_pos_weight",
+  #                                       "glnr_xgboost_0.max_depth",
+  #                                       "glnr_xgboost_0.eta",
+  #                                       "glnr_xgboost_0.gamma",
                                         "glnr_xgboost_1.scale_pos_weight",
                                         "glnr_xgboost_1.max_depth",
                                         "glnr_xgboost_1.eta",
@@ -147,4 +149,4 @@ glrn$predict(task, row_ids = test_idx) %>%
   as.data.table() %>%
   select(id = row_id, label = prob.bad) %>%
   mutate(id = id - 1) %>%
-  rio::export("results/folder_ranger/stack_ranger_01.csv")
+  rio::export("results/folder_ranger/stack_ranger.csv")
