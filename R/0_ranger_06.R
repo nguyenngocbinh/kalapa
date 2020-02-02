@@ -3,7 +3,8 @@ lapply(pkgs, function(pk) require(pk, character.only = TRUE))
 
 ## 2.2 create classif task
 load("data/task_classif.Rdata")
-task$col_roles$feature = setdiff(task$col_roles$feature, c("id", "age_source1_woe", "age_source2_woe", "field_23_woe"))
+task$col_roles$feature
+task$col_roles$feature = setdiff(task$col_roles$feature, c("id"))
 task$col_roles
 
 # split row_roles
@@ -14,7 +15,7 @@ task$row_roles$use <- train_idx
 task$row_roles$validation <- test_idx
 print(task)
 
-mlr3viz::autoplot(task)
+# mlr3viz::autoplot(task)
 plot_cols <- setdiff(task$feature_names,
                      c("district", "field_13", "field_39", "field_7", "field_9", "macv",
                        "province"))
@@ -33,13 +34,13 @@ pof = po("imputenewlvl")
 posample = po("imputesample")
 
 # check imputation
-new_task = posample$train(list(task = task$clone()))[[1]]
-new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
-  as.data.table() %>%
-  inspectdf::inspect_na()
-task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
-  as.data.table() %>%
-  inspectdf::inspect_na()
+# new_task = posample$train(list(task = task$clone()))[[1]]
+# new_task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
+#   as.data.table() %>%
+#   inspectdf::inspect_na()
+# task$backend$data(rows = train_idx, cols = new_task$feature_names) %>%
+#   as.data.table() %>%
+#   inspectdf::inspect_na()
 
 # ?mlr3pipelines::PipeOpEncode
 # ?mlr3pipelines::PipeOpCollapseFactors
@@ -59,15 +60,15 @@ imputer = list(
 ) %>>% po("featureunion")
 
 # imputer check
-imputer_task = imputer$train(task$clone())[[1]]
-df_imputer <- imputer_task$backend$data(rows = train_idx, cols = imputer_task$feature_names) %>%
-  as.data.table()
-
-df_imputer %>%
-  inspectdf::inspect_na()
+# imputer_task = imputer$train(task$clone())[[1]]
+# df_imputer <- imputer_task$backend$data(rows = train_idx, cols = imputer_task$feature_names) %>%
+#   as.data.table()
+#
+# df_imputer %>%
+#   inspectdf::inspect_na()
 
 ## 2.4 Imbalanced adjustment
-# pop = po("smote")
+pop = po("smote")
 opb = po("classbalancing")
 opb$param_set$values = list(ratio = 20, reference = "minor",
                             adjust = "minor", shuffle = FALSE)

@@ -67,6 +67,30 @@ dset <- bind_rows(train, test)
 dset$label %>% is.na() %>% table()
 
 # 1. Data cleaning ===========================================================
+numeric_vars <- c("age_source1", "age_source2",
+                  "FIELD_1", "FIELD_2", "FIELD_3", "FIELD_4", "FIELD_5", "FIELD_6",
+                  "FIELD_14", "FIELD_15", "FIELD_16",
+                  "FIELD_21", "FIELD_22",
+                  "FIELD_32", "FIELD_33", "FIELD_34",
+                  "FIELD_46",
+                  "FIELD_50", "FIELD_51", "FIELD_52", "FIELD_53", "FIELD_54", "FIELD_55", "FIELD_56", "FIELD_57")
+
+logical_vars <- c("FIELD_18", "FIELD_19", "FIELD_20",
+                  "FIELD_23",
+                  "FIELD_25", "FIELD_26", "FIELD_27", "FIELD_28", "FIELD_29", "FIELD_30", "FIELD_31",
+                  "FIELD_36", "FIELD_37", "FIELD_38",
+                  "FIELD_47", "FIELD_48", "FIELD_49")
+
+
+character_vars <- c("province", "district", "maCv",
+                    "FIELD_7", "FIELD_8", "FIELD_9", "FIELD_10", "FIELD_11", "FIELD_12", "FIELD_13",
+                    "FIELD_17",
+                    "FIELD_24",
+                    "FIELD_35",
+                    "FIELD_39", "FIELD_40", "FIELD_41", "FIELD_42", "FIELD_43", "FIELD_44", "FIELD_45")
+# Kiem tra xem du so luong bien chua
+names(dset) %>%  setdiff(c(numeric_vars, character_vars, logical_vars))
+
 ## 1.1. Check target variable
 ### 1.1.1. Missing
 train$label %>% is.na() %>% table()  # No missing
@@ -89,7 +113,11 @@ check_types <- inspect_types(train, test)
 check_types
 
 ## 1.5 check range
-f_check_range(train, "check_range_train")
+inspect_cat(dset[, logical_vars]) %>% show_plot()
+inspect_num(dset[, numeric_vars]) %>% show_plot()
+inspect_cat(dset[, setdiff(character_vars, "maCv")]) %>% show_plot()
+
+# f_check_range(train, "check_range_train")
 
 # 2. Data preprocessing
 # In this section, I will compose a function to apply with train and test
@@ -97,18 +125,32 @@ f_check_range(train, "check_range_train")
 # Export to excel to check
 f_clean_df <- function(df) {
   df <-  df %>%
-    rename_all(tolower) %>%
-    mutate(field_11 = as.numeric(na_if(field_11, "None")),
-           field_9 = field_9 %>% na_if("na") %>% replace_na("MISSING"),
-           age = ifelse(is.na(age_source1), age_source2, age_source1)) %>%
+    mutate_at(c(logical_vars, character_vars), toupper) %>%
+    mutate_at(c(logical_vars, character_vars), na_if, "NONE") %>%
+    mutate(FIELD_11 = as.numeric(FIELD_11)) %>%
+    mutate(FIELD_12 = case_when(FIELD_12 == "1" ~ TRUE, FIELD_12 == "0" ~ FALSE, TRUE ~ NA )) %>%
+    mutate(FIELD_13 = FIELD_13 %>% na_if("0") %>% na_if("4")  %>% na_if("8")  %>% na_if("12")) %>%
+    mutate(FIELD_39 = FIELD_39 %>% na_if("1")) %>%
+    mutate(FIELD_40 = FIELD_40 %>% na_if("02 05 08 11") %>% na_if("05 08 11 02")  %>% na_if("08 02")) %>%
+    mutate(FIELD_43 = FIELD_43 %>% na_if("0") %>% na_if("5")) %>%
+    mutate(FIELD_45 = as.numeric(FIELD_45)) %>%
+    mutate(FIELD_9 = FIELD_9 %>% na_if("na") %>% replace_na("MISSING"),
+           FIELD_9 = FIELD_9 %>% na_if("74") %>% na_if("75")  %>% na_if("79") %>% na_if("80")  %>% na_if("86"),
+           FIELD_9 = tidyr::replace_na(FIELD_9, "RANDOM MISSING")) %>%
+  # working with numeric variables
+    mutate(AGE = if_else(age_source1 == age_source2, age_source1, NA_real_)) %>%
+    mutate(AGE = if_else(AGE >= 18, AGE, NA_real_)) %>%
+    select(-age_source1, - age_source2, - FIELD_7) %>%
+  # convert ti character
     mutate_if(is.factor, as.character) %>%
     mutate_if(is.logical, as.character)
 
   df_non_na <- df %>%
-    filter(field_9 != "MISSING")
+    filter(FIELD_9 != "MISSING" | is.na(FIELD_9)) %>%
+    mutate_if(is.character, replace_na, "RANDOM MISSING")
 
   df_na <- df %>%
-    filter(field_9 == "MISSING") %>%
+    filter(FIELD_9 == "MISSING") %>%
     mutate_if(is.character, replace_na, "MISSING")
 
   bind_df <- df_non_na %>%
@@ -120,14 +162,15 @@ f_clean_df <- function(df) {
 
   bind_df <- scorecard::replace_na(bind_df, repl = "median")
 
-  bins <- scorecard::woebin(bind_df, y = "label", var_skip = c("id"), bin_num_limit = 10, check_cate_num = FALSE)
+  # bins <- scorecard::woebin(bind_df, y = "label", var_skip = c("id"), bin_num_limit = 10, check_cate_num = FALSE)
+  #
+  # cleaned_df <- scorecard::woebin_ply(bind_df, bins = bins, to = "woe")
+  #
+  # cleaned_df <- cleaned_df %>% mutate_if(is.character, as.factor)
 
-  cleaned_df <- scorecard::woebin_ply(bind_df, bins = bins, to = "woe")
-
-  cleaned_df <- cleaned_df %>% mutate_if(is.character, as.factor)
-
-  return(cleaned_df)
+  return(bind_df)
 }
+
 
 # clean data using function
 # cleaned_train <- f_clean_df(train)
@@ -138,15 +181,23 @@ cleaned_dset <- f_clean_df(dset)
 cleaned_dset %>% glimpse()
 
 # typeof variables
-numeric_vars <- train %>% select_if(is.numeric) %>% names()
-factor_vars <- train %>% select_if(is.factor) %>% names()
-character_vars <- train %>% select_if(is.character) %>% names()
-logical_vars <- train %>% select_if(is.logical) %>% names()
+new_character_vars <- character_vars %>% setdiff(c("FIELD_11", "FIELD_45", "FIELD_12"))
+new_numeric_vars <- c(numeric_vars, "FIELD_11", "FIELD_45")
+new_logical_vars <- c(logical_vars, "FIELD_12")
 
+## 2.2 create reg task
 
-## 2.2 create classif task
 task = TaskRegr$new(id = "kalapa", backend = cleaned_dset, target = "label")
 train_idx = 1:30000
 test_idx = setdiff(seq_len(task$nrow), train_idx)
 
-save(dset, cleaned_dset, task, train_idx, test_idx, file = "data/task_classif_woe.Rdata")
+save(dset, cleaned_dset, task, train_idx, test_idx, file = "data/task_reg.Rdata")
+
+## 2.2 create classif task
+
+cleaned_dset <- cleaned_dset %>%
+  mutate(label = if_else(label == 1, "bad", "good") %>% as.factor)
+
+task = TaskClassif$new(id = "kalapa", backend = cleaned_dset, target = "label")
+
+save(dset, cleaned_dset, task, train_idx, test_idx, file = "data/task_classif.Rdata")
