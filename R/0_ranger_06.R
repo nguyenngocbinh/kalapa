@@ -8,9 +8,6 @@ task$col_roles$feature = setdiff(task$col_roles$feature, c("id"))
 task$col_roles
 
 # split row_roles
-train_idx = 1:30000
-test_idx = setdiff(seq_len(task$nrow), train_idx)
-
 task$row_roles$use <- train_idx
 task$row_roles$validation <- test_idx
 print(task)

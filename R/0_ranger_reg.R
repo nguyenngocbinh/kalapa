@@ -2,15 +2,12 @@ pkgs <- c("readr", "dplyr", "inspectdf", "data.table", "mlr3verse", "mlr3viz")
 lapply(pkgs, function(pk) require(pk, character.only = TRUE))
 
 ## 2.2 create classif task
-load("data/task_reg.Rdata")
+load("data/task_reg_woe.Rdata")
 task$col_roles$feature
 task$col_roles$feature = setdiff(task$col_roles$feature, c("id"))
 task$col_roles
 
 # split row_roles
-train_idx = 1:30000
-test_idx = setdiff(seq_len(task$nrow), train_idx)
-
 task$row_roles$use <- train_idx
 task$row_roles$validation <- test_idx
 print(task)

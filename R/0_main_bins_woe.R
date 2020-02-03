@@ -122,10 +122,16 @@ inspect_cat(dset[, setdiff(character_vars, "maCv")]) %>% show_plot()
 # 2. Data preprocessing
 # In this section, I will compose a function to apply with train and test
 ## 2.1. Clean data
+
+# typeof variables
+new_character_vars <- character_vars %>% setdiff(c("FIELD_11", "FIELD_45", "FIELD_12"))
+new_numeric_vars <- c(numeric_vars, "FIELD_11", "FIELD_45") %>% setdiff(c("age_source1", "age_source2"))
+new_logical_vars <- c(logical_vars, "FIELD_12")
+
 # Export to excel to check
 eval(parse("D:/R/kalapa/R/1_functions.R"))
-f_clean_df <- function(df) {
-  df <-  df %>%
+
+df <-  dset %>%
     mutate_at(c(logical_vars, character_vars), toupper) %>%
     mutate_at(c(logical_vars, character_vars), na_if, "NONE") %>%
     mutate(FIELD_11 = as.numeric(FIELD_11)) %>%
@@ -147,56 +153,55 @@ f_clean_df <- function(df) {
     mutate_if(is.factor, as.character) %>%
     mutate_if(is.logical, as.character)
 
-  df_non_na <- df %>%
+df_non_na <- df %>%
     filter(FIELD_9 != "MISSING" | is.na(FIELD_9)) %>%
     mutate_if(is.character, replace_na, "RANDOM MISSING")
 
-  df_na <- df %>%
+df_na <- df %>%
     filter(FIELD_9 == "MISSING") %>%
     mutate_if(is.character, replace_na, "MISSING")
 
-  bind_df <- df_non_na %>%
+cleaned_dt <- df_non_na %>%
     bind_rows(df_na) %>%
     # mutate(label_fct = if_else(label == 1, "bad", "good"))%>%
     mutate_if(is.character, as.factor) %>%
     arrange(id) %>% # Note
     as.data.table()
 
-  bind_df <- scorecard::replace_na(bind_df, repl = "median")
+cleaned_dt <- scorecard::replace_na(cleaned_dt, repl = "median")
 
-  # bins <- scorecard::woebin(bind_df, y = "label", var_skip = c("id"), bin_num_limit = 10, check_cate_num = FALSE)
-  #
-  # cleaned_df <- scorecard::woebin_ply(bind_df, bins = bins, to = "woe")
-  #
-  # cleaned_df <- cleaned_df %>% mutate_if(is.character, as.factor)
+bins <- scorecard::woebin(cleaned_dt, y = "label", var_skip = c("id"), bin_num_limit = 8, check_cate_num = FALSE)
+bins_numeric <- scorecard::woebin(cleaned_dt, y = "label", x = new_numeric_vars, var_skip = c("id"), bin_num_limit = 8, check_cate_num = FALSE)
 
-  return(bind_df)
-}
+dt_woe <- scorecard::woebin_ply(cleaned_dt, bins = bins, to = "woe")
+dt_bin <- scorecard::woebin_ply(cleaned_dt, bins = bins, to = "bin")
 
+dt_woe_cat <- scorecard::woebin_ply(cleaned_dt, bins = bins_numeric, to = "woe")
+dt_bin_cat <- scorecard::woebin_ply(cleaned_dt, bins = bins_numeric, to = "bin")
 
-# clean data using function
-# cleaned_train <- f_clean_df(train)
-# cleaned_test <- f_clean_df(test)
-cleaned_dset <- f_clean_df(dset)
 
 # See detail of data
-cleaned_dset %>% glimpse()
+cleaned_dt %>% glimpse()
 
-# typeof variables
-new_character_vars <- character_vars %>% setdiff(c("FIELD_11", "FIELD_45", "FIELD_12"))
-new_numeric_vars <- c(numeric_vars, "FIELD_11", "FIELD_45")
-new_logical_vars <- c(logical_vars, "FIELD_12")
 
-cleaned_dset %>% select_if(is.factor) %>% inspect_cat() %>% show_plot()
-cleaned_dset %>% select_if(is.numeric) %>% inspect_num() %>% show_plot()
+
+cleaned_dt %>% select_if(is.factor) %>% inspect_cat() %>% show_plot()
+cleaned_dt %>% select_if(is.numeric) %>% inspect_num() %>% show_plot()
 
 ## 2.2 create reg task
-
-task = TaskRegr$new(id = "kalapa", backend = cleaned_dset, target = "label")
 train_idx = 1:30000
-test_idx = setdiff(seq_len(task$nrow), train_idx)
+test_idx = 30001:50000
+task = TaskRegr$new(id = "kalapa", backend = dt_woe, target = "label")
+save(dset, dt_woe, task, train_idx, test_idx, file = "data/task_reg_woe.Rdata")
 
-save(dset, cleaned_dset, task, train_idx, test_idx, file = "data/task_reg.Rdata")
+task = TaskRegr$new(id = "kalapa", backend = dt_bin, target = "label")
+save(dset, dt_bin, task, train_idx, test_idx, file = "data/task_reg_bin.Rdata")
+
+task = TaskRegr$new(id = "kalapa", backend = dt_woe_cat, target = "label")
+save(dset, dt_woe_cat, task, train_idx, test_idx, file = "data/task_reg_woe_cat.Rdata")
+
+task = TaskRegr$new(id = "kalapa", backend = dt_bin_cat, target = "label")
+save(dset, dt_bin_cat, task, train_idx, test_idx, file = "data/task_reg_bincat.Rdata")
 
 ## 2.2 create classif task
 
