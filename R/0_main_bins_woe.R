@@ -123,6 +123,7 @@ inspect_cat(dset[, setdiff(character_vars, "maCv")]) %>% show_plot()
 # In this section, I will compose a function to apply with train and test
 ## 2.1. Clean data
 # Export to excel to check
+eval(parse("D:/R/kalapa/R/1_functions.R"))
 f_clean_df <- function(df) {
   df <-  df %>%
     mutate_at(c(logical_vars, character_vars), toupper) %>%
@@ -137,10 +138,11 @@ f_clean_df <- function(df) {
     mutate(FIELD_9 = FIELD_9 %>% na_if("na") %>% replace_na("MISSING"),
            FIELD_9 = FIELD_9 %>% na_if("74") %>% na_if("75")  %>% na_if("79") %>% na_if("80")  %>% na_if("86"),
            FIELD_9 = tidyr::replace_na(FIELD_9, "RANDOM MISSING")) %>%
+    mutate(maCv =  f_recode_macv(maCv)) %>%
   # working with numeric variables
     mutate(AGE = if_else(age_source1 == age_source2, age_source1, NA_real_)) %>%
     mutate(AGE = if_else(AGE >= 18, AGE, NA_real_)) %>%
-    select(-age_source1, - age_source2, - FIELD_7) %>%
+    select(-age_source1, - age_source2, - FIELD_7, - district) %>%
   # convert ti character
     mutate_if(is.factor, as.character) %>%
     mutate_if(is.logical, as.character)
@@ -184,6 +186,9 @@ cleaned_dset %>% glimpse()
 new_character_vars <- character_vars %>% setdiff(c("FIELD_11", "FIELD_45", "FIELD_12"))
 new_numeric_vars <- c(numeric_vars, "FIELD_11", "FIELD_45")
 new_logical_vars <- c(logical_vars, "FIELD_12")
+
+cleaned_dset %>% select_if(is.factor) %>% inspect_cat() %>% show_plot()
+cleaned_dset %>% select_if(is.numeric) %>% inspect_num() %>% show_plot()
 
 ## 2.2 create reg task
 
