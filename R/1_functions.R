@@ -154,3 +154,16 @@ f_recode_macv <- function(st){
 
 
 }
+
+# Impute numeric function
+
+fimpute_numeric <- function(feature, seed = 1911) {
+  outlen <- sum(is.na(feature))
+  non_na_feature <- na.omit(feature)
+  set.seed(seed)
+  filldata <- sample(non_na_feature, outlen, replace = TRUE)
+  feature[is.na(feature)] <- filldata
+  feature
+}
+
+

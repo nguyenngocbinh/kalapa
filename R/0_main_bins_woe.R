@@ -124,51 +124,52 @@ inspect_cat(dset[, setdiff(character_vars, "maCv")]) %>% show_plot()
 ## 2.1. Clean data
 
 # typeof variables
-new_character_vars <- character_vars %>% setdiff(c("FIELD_11", "FIELD_45", "FIELD_12"))
-new_numeric_vars <- c(numeric_vars, "FIELD_11", "FIELD_45") %>% setdiff(c("age_source1", "age_source2"))
+new_character_vars <- character_vars %>% setdiff(c("FIELD_11", "FIELD_12", "FIELD_40", "FIELD_45"))
+new_numeric_vars <- c(numeric_vars, "FIELD_11", "FIELD_40", "FIELD_45") %>% setdiff(c("age_source1", "age_source2"))
 new_logical_vars <- c(logical_vars, "FIELD_12")
 
 # Export to excel to check
 eval(parse("D:/R/kalapa/R/1_functions.R"))
 
 df <-  dset %>%
-    mutate_at(c(logical_vars, character_vars), toupper) %>%
-    mutate_at(c(logical_vars, character_vars), na_if, "NONE") %>%
-    mutate(FIELD_11 = as.numeric(FIELD_11)) %>%
-    mutate(FIELD_12 = case_when(FIELD_12 == "1" ~ TRUE, FIELD_12 == "0" ~ FALSE, TRUE ~ NA )) %>%
-    mutate(FIELD_13 = FIELD_13 %>% na_if("0") %>% na_if("4")  %>% na_if("8")  %>% na_if("12")) %>%
-    mutate(FIELD_39 = FIELD_39 %>% na_if("1")) %>%
-    mutate(FIELD_40 = FIELD_40 %>% na_if("02 05 08 11") %>% na_if("05 08 11 02")  %>% na_if("08 02")) %>%
-    mutate(FIELD_43 = FIELD_43 %>% na_if("0") %>% na_if("5")) %>%
-    mutate(FIELD_45 = as.numeric(FIELD_45)) %>%
-    mutate(FIELD_9 = FIELD_9 %>% na_if("na") %>% replace_na("MISSING"),
-           FIELD_9 = FIELD_9 %>% na_if("74") %>% na_if("75")  %>% na_if("79") %>% na_if("80")  %>% na_if("86"),
-           FIELD_9 = tidyr::replace_na(FIELD_9, "RANDOM MISSING")) %>%
-    mutate(maCv =  f_recode_macv(maCv)) %>%
+  mutate_at(c(logical_vars, character_vars), toupper) %>%
+  mutate_at(c(logical_vars, character_vars), na_if, "NONE") %>%
+  mutate(FIELD_11 = as.numeric(FIELD_11)) %>%
+  mutate(FIELD_12 = case_when(FIELD_12 == "1" ~ TRUE, FIELD_12 == "0" ~ FALSE, TRUE ~ NA )) %>%
+  mutate(FIELD_13 = case_when(FIELD_13 %in% c("0", "4", "8", "12") ~ NA_character_,
+                              TRUE ~ as.character(FIELD_13))) %>%
+  mutate(FIELD_39 = na_if(FIELD_39, "1")) %>%
+  mutate(FIELD_40 = case_when(FIELD_40  %in% c("02 05 08 11", "05 08 11 02", "08 02") ~ NA_character_,
+                              TRUE ~ as.character(FIELD_40)),
+         FIELD_40 = as.numeric(FIELD_40)) %>%
+  mutate(FIELD_43 = FIELD_43 %>% na_if("0") %>% na_if("5")) %>%
+  mutate(FIELD_45 = as.numeric(FIELD_45)) %>%
+  mutate(FIELD_9 = case_when(FIELD_9 == "NA" ~ "MISSING",
+                             FIELD_9  %in% c("75", "79", "80", "86") ~ "RANDOM MISSING",
+                             TRUE ~ as.character(FIELD_9))) %>%
+  mutate(maCv =  f_recode_macv(maCv)) %>%
   # working with numeric variables
-    mutate(AGE = if_else(age_source1 == age_source2, age_source1, NA_real_)) %>%
-    mutate(AGE = if_else(AGE >= 18, AGE, NA_real_)) %>%
-    select(-age_source1, - age_source2, - FIELD_7, - district) %>%
+  mutate(AGE = if_else(age_source1 == age_source2, age_source1, NA_real_)) %>%
+  mutate(AGE = if_else(AGE >= 18, AGE, NA_real_)) %>%
+  select(-age_source1, - age_source2, - FIELD_7, - district) %>%
   # convert ti character
-    mutate_if(is.factor, as.character) %>%
-    mutate_if(is.logical, as.character)
+  mutate_if(is.factor, as.character) %>%
+  mutate_if(is.logical, as.character)
 
 df_non_na <- df %>%
-    filter(FIELD_9 != "MISSING" | is.na(FIELD_9)) %>%
-    mutate_if(is.character, replace_na, "RANDOM MISSING")
+  filter(FIELD_9 != "MISSING" | is.na(FIELD_9)) %>%
+  mutate_if(is.character, replace_na, "RANDOM MISSING")
 
 df_na <- df %>%
-    filter(FIELD_9 == "MISSING") %>%
-    mutate_if(is.character, replace_na, "MISSING")
+  filter(FIELD_9 == "MISSING") %>%
+  mutate_if(is.character, replace_na, "MISSING")
 
 cleaned_dt <- df_non_na %>%
-    bind_rows(df_na) %>%
-    # mutate(label_fct = if_else(label == 1, "bad", "good"))%>%
-    mutate_if(is.character, as.factor) %>%
-    arrange(id) %>% # Note
-    as.data.table()
-
-cleaned_dt <- scorecard::replace_na(cleaned_dt, repl = "median")
+  bind_rows(df_na) %>%
+  mutate_if(is.character, as.factor) %>%
+  mutate_at(new_numeric_vars, fimpute_numeric) %>% # neu dung mutate if thi bien id va label bi loi
+  arrange(id) %>% # Note
+  as.data.table()
 
 bins <- scorecard::woebin(cleaned_dt, y = "label", var_skip = c("id"), bin_num_limit = 8, check_cate_num = FALSE)
 bins_numeric <- scorecard::woebin(cleaned_dt, y = "label", x = new_numeric_vars, var_skip = c("id"), bin_num_limit = 8, check_cate_num = FALSE)
@@ -182,7 +183,6 @@ dt_bin_cat <- scorecard::woebin_ply(cleaned_dt, bins = bins_numeric, to = "bin")
 
 # See detail of data
 cleaned_dt %>% glimpse()
-
 
 
 cleaned_dt %>% select_if(is.factor) %>% inspect_cat() %>% show_plot()
@@ -205,9 +205,18 @@ save(dset, dt_bin_cat, task, train_idx, test_idx, file = "data/task_reg_bincat.R
 
 ## 2.2 create classif task
 
-cleaned_dset <- cleaned_dset %>%
-  mutate(label = if_else(label == 1, "bad", "good") %>% as.factor)
+dt_woe[, label := as.factor(fifelse(label == 1, "bad", "good"))]
+task = TaskClassif$new(id = "kalapa", backend = dt_woe, target = "label")
+save(dset, dt_woe, task, train_idx, test_idx, file = "data/task_classif_woe.Rdata")
 
-task = TaskClassif$new(id = "kalapa", backend = cleaned_dset, target = "label")
+dt_bin[, label := as.factor(fifelse(label == 1, "bad", "good"))]
+task = TaskClassif$new(id = "kalapa", backend = dt_bin, target = "label")
+save(dset, dt_bin, task, train_idx, test_idx, file = "data/task_classif_woe.Rdata")
 
-save(dset, cleaned_dset, task, train_idx, test_idx, file = "data/task_classif.Rdata")
+dt_woe_cat[, label := as.factor(fifelse(label == 1, "bad", "good"))]
+task = TaskClassif$new(id = "kalapa", backend = dt_woe_cat, target = "label")
+save(dset, dt_woe_cat, task, train_idx, test_idx, file = "data/task_classif_woe.Rdata")
+
+dt_bin_cat[, label := as.factor(fifelse(label == 1, "bad", "good"))]
+task = TaskClassif$new(id = "kalapa", backend = dt_bin_cat, target = "label")
+save(dset, dt_bin_cat, task, train_idx, test_idx, file = "data/task_classif_woe.Rdata")
