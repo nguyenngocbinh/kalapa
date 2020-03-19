@@ -4,9 +4,6 @@ train_plan = drake_plan(
   rf_train = rf_tuned$train(task_classif)
 )
 
-# check results
-readd(rf_train)$archive(unnest = "params") %>% arrange(-classif.auc)
-
 #=============================================================================
 # Predict
 predict_plan = drake_plan(
