@@ -1,7 +1,8 @@
 learner_plan = drake_plan(
 
   ## 1. Choose learner
-  learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity", num.trees = 100),
+  # learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity", num.trees = 100),
+  learner = lrn("classif.xgboost", predict_type = "prob"),
   # print(learner)
   polrn = PipeOpLearner$new(learner),
 
@@ -42,7 +43,6 @@ learner_plan = drake_plan(
   glrn = target({
     glrn = GraphLearner$new(graph)
     glrn$predict_type = "prob"
-    glrn$param_set$values$classif.ranger.importance = "impurity"
     return(glrn)
   })
 )
