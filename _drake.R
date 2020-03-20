@@ -1,5 +1,6 @@
 # Load packages, functions and plan --------------------------------------------
 
+# clean(destroy = TRUE)
 source("_packages.R")
 
 sourceDirectory("R")
@@ -23,11 +24,11 @@ plan = bind_plans(clean_plan, task_plan, learner_plan, param_sets_plan,
 
 make(plan)
 
-readd(rf_predict) %>%
-  as.data.table() %>%
-  select(id = row_id, label = prob.bad) %>%
-  mutate(id = id - 1) %>%
-  rio::export("results/rf_predict.csv")
-
-readd(graph)$plot(html = TRUE) %>% visNetwork::visInteraction()
-readd(glrn)$param_set %>% as.data.table()
+# readd(rf_predict) %>%
+#   as.data.table() %>%
+#   select(id = row_id, label = prob.bad) %>%
+#   mutate(id = id - 1) %>%
+#   rio::export("results/rf_predict.csv")
+#
+# readd(graph)$plot(html = TRUE) %>% visNetwork::visInteraction()
+# readd(glrn)$param_set %>% as.data.table()

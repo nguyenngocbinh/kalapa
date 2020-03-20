@@ -13,9 +13,10 @@ param_sets_plan = drake_plan(
     ParamInt$new("classif.xgboost.max_delta_step", lower = 1, upper = 10), # control imbalances
     ParamDbl$new("classif.xgboost.subsample", lower = 0.5, upper = 0.8),
     #ParamFct$new("classif.xgboost.feature_selector", levels = c("cyclic", "shuffle", "random", "greedy", "thrifty"))
-    ParamFct$new("classif.xgboost.feature_selector", levels = "thrifty"),
-    ParamInt$new("classif.xgboost.top_k", lower = 5, upper = 20)
-    # ParamInt$new("classif.xgboost.nrounds", lower = 100, upper = 500), # maximum number of iterations, or tree
+    # ParamFct$new("classif.xgboost.feature_selector", levels = c("cyclic", "shuffle"))
+    ParamFct$new("classif.xgboost.feature_selector", levels = "shuffle"),
+    #ParamInt$new("classif.xgboost.top_k", lower = 5, upper = 20)
+    ParamInt$new("classif.xgboost.nrounds", lower = 10, upper = 50), # maximum number of iterations, or tree
 
   ))
 )
