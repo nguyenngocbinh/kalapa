@@ -5,18 +5,18 @@ param_sets_plan = drake_plan(
   ps = ParamSet$new(list(
     #ParamFct$new("classif.xgboost.booster", levels = c("gbtree", "gblinear", "dart")),
     ParamFct$new("classif.xgboost.booster", levels = "gblinear"),
-    ParamInt$new("classif.xgboost.scale_pos_weight", lower = 2, upper = 80),
-    ParamInt$new("classif.xgboost.max_depth", lower = 5, upper = 50),
-    ParamDbl$new("classif.xgboost.eta", lower = .01, upper = .7),
-    ParamInt$new("classif.xgboost.gamma", lower = 3, upper = 7),
-    ParamDbl$new("classif.xgboost.min_child_weight", lower = .01, upper = 20),
+    ParamInt$new("classif.xgboost.scale_pos_weight", lower = 5, upper = 60),
+    ParamInt$new("classif.xgboost.max_depth", lower = 15, upper = 100),
+    ParamDbl$new("classif.xgboost.eta", lower = 0.1, upper = 0.8),
+    ParamInt$new("classif.xgboost.gamma", lower = 1, upper = 60),
+    ParamDbl$new("classif.xgboost.min_child_weight", lower = 1, upper = 50),
     ParamInt$new("classif.xgboost.max_delta_step", lower = 1, upper = 10), # control imbalances
-    ParamDbl$new("classif.xgboost.subsample", lower = 0.5, upper = 0.8),
+    ParamDbl$new("classif.xgboost.subsample", lower = 0.3, upper = 0.8),
     #ParamFct$new("classif.xgboost.feature_selector", levels = c("cyclic", "shuffle", "random", "greedy", "thrifty"))
     # ParamFct$new("classif.xgboost.feature_selector", levels = c("cyclic", "shuffle"))
     ParamFct$new("classif.xgboost.feature_selector", levels = "shuffle"),
     #ParamInt$new("classif.xgboost.top_k", lower = 5, upper = 20)
-    ParamInt$new("classif.xgboost.nrounds", lower = 10, upper = 50), # maximum number of iterations, or tree
+    ParamInt$new("classif.xgboost.nrounds", lower = 10, upper = 50) # maximum number of iterations, or tree
 
   ))
 )
