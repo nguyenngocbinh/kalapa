@@ -6,7 +6,7 @@ param_sets_plan = drake_plan(
     # ParamDbl$new("information_gain.filter.frac", lower = .3, upper = .9),
     #ParamFct$new("classif.xgboost.booster", levels = c("gbtree", "gblinear", "dart")),
     # ParamLgl$new("pca.center", default = TRUE),
-    ParamDbl$new("yeojohnson.eps", lower = .01, upper = .7),
+    ParamDbl$new("yeojohnson.eps", lower = .01, upper = .3),
     ParamFct$new("classif.xgboost.booster", levels = "gblinear"),
     ParamInt$new("classif.xgboost.scale_pos_weight", lower = 2, upper = 80),
     ParamInt$new("classif.xgboost.max_depth", lower = 8, upper = 50),
