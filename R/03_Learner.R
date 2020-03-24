@@ -26,7 +26,7 @@ learner_plan = drake_plan(
     return(opb)
   }),
 
-  # 4. Feature selection ------------------------------------------------------------
+  # 4. Feature selection -------------------------------------------------------
   filter_impotance = mlr_pipeops$get("filter",
                            filter = mlr3filters::FilterImportance$new(),
                            param_vals = list(filter.frac = 0.7)),
@@ -35,11 +35,17 @@ learner_plan = drake_plan(
                            filter = mlr3filters::FilterInformationGain$new(),
                            param_vals = list(filter.frac = 0.7, type = "infogain")),
 
-  filter_cor = flt("correlation"),
+  filter_cor = flt("correlation", method = "kendall"),
+
+  # 5. Feature transformation --------------------------------------------------
+  pca        = po("pca"),
+  po_yeo = po("yeojohnson"),
 
   # =============================================================================
   ## 4.2. Make graph
-  graph = posample %>>% polrn,
+  # graph = posample %>>% pca %>>% polrn,
+  graph = posample %>>% po_yeo %>>% polrn,
+  # graph = posample %>>% polrn,
   glrn = target({
     glrn = GraphLearner$new(graph)
     glrn$predict_type = "prob"
