@@ -248,11 +248,15 @@ clean_plan = drake_plan(
   cleaned_dt = f_clean_data(dset, logical_vars, character_vars),
 
   # Bin data (note skip id)
-  bins = scorecard::woebin(cleaned_dt,
+  bins_all = scorecard::woebin(cleaned_dt,
                            y = "label",
                            var_skip = c("id"),
                            bin_num_limit = 8,
+                           save_breaks_list = "tmp/bins_all",
+                           stop_limit = .09,
                            check_cate_num = FALSE),
+
+  plotlist = woebin_plot(bins_all),
 
   # Bin with numeric only
   bins_numeric = scorecard::woebin(cleaned_dt,
@@ -263,34 +267,36 @@ clean_plan = drake_plan(
                                    check_cate_num = FALSE),
   # Bin with factor only
   bins_factor = scorecard::woebin(cleaned_dt,
-                                   y = "label",
-                                   x = setdiff(c(new_character_vars, new_logical_vars),
-                                               c("district", "FIELD_7")),
-                                   var_skip = c("id"),
-                                   bin_num_limit = 8,
-                                   check_cate_num = FALSE),
+                                  y = "label",
+                                  x = setdiff(c(new_character_vars, new_logical_vars),
+                                              c("district", "FIELD_7")),
+                                  var_skip = c("id"),
+                                  bin_num_limit = 8,
+                                  method = "chimerge",
+                                  check_cate_num = FALSE),
 
   # Create data for regr task
   dt_woe_regr = target({
-    dt_woe = scorecard::woebin_ply(cleaned_dt, bins = bins, to = "woe")
+    dt_woe = scorecard::woebin_ply(cleaned_dt, bins = bins_all, to = "woe")
     return(dt_woe)
     }),
 
   # Create data for classif task
   dt_woe_classif = target({
     dt_woe = scorecard::woebin_ply(cleaned_dt,
-                                   bins = bins_factor, # note: using bins_factor
+                                   bins = bins_all, # note: using bins_factor
                                    to = "woe")
     dt_woe$label = as.factor(if_else(dt_woe$label == 1, "bad", "good", missing = NULL))
     return(dt_woe)
   }),
 
   # Create data with bining only
-  dt_bin = scorecard::woebin_ply(cleaned_dt, bins = bins, to = "bin"),
+  dt_bin = scorecard::woebin_ply(cleaned_dt, bins = bins_all, to = "bin"),
 
   # Create data with numeric binning and convert to woe
   dt_woe_cat = scorecard::woebin_ply(cleaned_dt, bins = bins_numeric, to = "woe"),
 
   # Create data with numeric binning and no convert to woe
   dt_bin_cat = scorecard::woebin_ply(cleaned_dt, bins = bins_numeric, to = "bin")
+
 )
