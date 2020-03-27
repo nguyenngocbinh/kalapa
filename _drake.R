@@ -9,7 +9,7 @@ sourceDirectory("R")
 #lgr::get_logger("mlr3")$set_threshold("warn")
 
 # Create plans -----------------------------------------------------------------
-plan = bind_plans(clean_plan, task_plan, learner_plan, param_sets_plan,
+plan = bind_plans(other_plan, clean_plan, task_plan, learner_plan, param_sets_plan,
                   resampling_plan, measures_plan,  tuning_plan, train_plan, predict_plan
 )
 

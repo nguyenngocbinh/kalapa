@@ -11,7 +11,7 @@ predict_plan = drake_plan(
   #
   export_result = rf_predict %>%
     as.data.table() %>%
-    select(id = row_id, label = prob.bad) %>%
+    select(id = row_id, label = prob.Bad) %>%
     mutate(id = id - 1) %>%
     rio::export(paste0("results/result",stringr::str_replace_all(as.character(Sys.time()), ":", "-"), ".csv")),
 

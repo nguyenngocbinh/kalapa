@@ -217,7 +217,7 @@ clean_plan = drake_plan(
                    FIELD_55 = col_double(), FIELD_56 = col_double(), FIELD_57 = col_double()),
   train = readr::read_csv("data/train.csv", col_types = col_types),
   test = readr::read_csv("data/test.csv", col_types = col_types),
-  dset = test %>% mutate(label = NA) %>% bind_rows(train) %>% arrange(id),
+  dset = test %>% mutate(label = NA) %>% bind_rows(train),
   numeric_vars = c("age_source1", "age_source2",
                    "FIELD_1", "FIELD_2", "FIELD_3", "FIELD_4", "FIELD_5", "FIELD_6",
                    "FIELD_14", "FIELD_15", "FIELD_16",
@@ -282,20 +282,13 @@ clean_plan = drake_plan(
     }),
 
   # Create data for classif task
-  dt_woe_classif_backup = target({
+  dt_woe_classif = target({
     dt_woe = scorecard::woebin_ply(cleaned_dt,
                                    bins = bins_all, # note: using bins_factor
                                    to = "woe")
     dt_woe$label = as.factor(if_else(dt_woe$label == 1, "bad", "good", missing = NULL))
     return(dt_woe)
   }),
-
-  dt_woe_classif = target({
-    df_test_Scaled$label = NULL
-    out = df_forGBM_Scaled %>% bind_rows(df_test_Scaled)
-    return(out)
-
-    }),
 
   # Create data with bining only
   dt_bin = scorecard::woebin_ply(cleaned_dt, bins = bins_all, to = "bin"),
