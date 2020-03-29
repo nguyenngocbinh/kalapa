@@ -255,6 +255,16 @@ clean_plan = drake_plan(
                            save_breaks_list = "tmp/bins_all",
                            stop_limit = .09,
                            check_cate_num = FALSE),
+  iv_val = bins_all %>%
+    map_dfr(bind_rows) %>%
+    distinct(variable, .keep_all = TRUE) %>%
+    arrange(-total_iv) %>%
+    mutate(variable = factor(variable, levels = variable)),
+
+  select_iv = iv_val %>%
+    filter(total_iv >= 0) %>%
+    pull(variable) %>%
+    as.character(),
 
   plotlist = woebin_plot(bins_all),
 

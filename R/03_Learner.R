@@ -17,9 +17,11 @@ learner_plan = drake_plan(
     pof %>>% pon,
     pom
   ) %>>% po("featureunion"),
+  ## scale
+  po_scale = po("scalerange", param_vals = list(lower = -1, upper = 1)),
 
   ## 3. Imbalanced adjustment
-  pop = po("smote"),
+  po_smote = po("smote"),
   opb = target({
     opb = po("classbalancing")
     opb$param_set$values = list(ratio = 20, reference = "minor", adjust = "minor", shuffle = FALSE)
@@ -44,7 +46,7 @@ learner_plan = drake_plan(
   # =============================================================================
   ## 4.2. Make graph
   # graph = posample %>>% pca %>>% polrn,
-  graph = posample %>>% po_yeo %>>% polrn,
+  graph = po_scale %>>% po_yeo %>>% polrn,
   # graph = posample %>>% polrn,
   glrn = target({
     glrn = GraphLearner$new(graph)

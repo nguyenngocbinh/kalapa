@@ -44,12 +44,13 @@ other_plan <- drake_plan(
                     y = "label",
                     no_cores = 8,
                     positive = "label|1",
+                    save_breaks_list = "tmp/train_brk_list.R",
                     var_skip = "id"),
 
   iv_values = bins_var %>%
     map_dfr(bind_rows) %>%
     distinct(variable, .keep_all = TRUE) %>%
-    arrange(total_iv) %>%
+    arrange(-total_iv) %>%
     mutate(variable = factor(variable, levels = variable)),
 
   var_IV_10 = iv_values %>%
@@ -99,16 +100,14 @@ other_plan <- drake_plan(
   df_test_Scaled = test_woe_imputed %>%
     mutate_if(is.numeric, function(x) {(x - min(x)) / (max(x) - min(x))}) ,
 
+  df_sel = df_forGBM_Scaled %>% select(c(paste0(var_IV_10[1:19], "_", "woe"), "label")),
 
   # Train Random Forest:
 
-  RF_default = ranger(label ~ ., data = df_forGBM_Scaled, probability = TRUE),
+  RF_default = ranger(label ~ ., data = df_sel, probability = TRUE, num.trees = 500),
 
   # Use the RF Classifier for predicting PD (Probability of Default):
-  pd_sub_RF = predict(RF_default, df_test_Scaled, type = "response"),
-
-
-
+  pd_sub_RF = predict(RF_default, df_test_Scaled, type = "response")
 
 )
 
@@ -122,4 +121,5 @@ other_plan <- drake_plan(
 #
 # readd(pd_sub_RF)$predictions %>% as.data.frame() %>% pull(Bad) -> pd_sub_RF
 # df_sub <- data.frame(id = 30000:49999, label = pd_sub_RF)
-# write_csv(df_sub, "results/submission_RandomForest_ScaledData.csv")
+# write_csv(df_sub, paste0("results/rf",stringr::str_replace_all(as.character(Sys.time()), ":", "-"), ".csv"))
+
