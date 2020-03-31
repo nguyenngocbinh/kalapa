@@ -44,7 +44,7 @@ other_plan <- drake_plan(
                     y = "label",
                     no_cores = 8,
                     positive = "label|1",
-                    save_breaks_list = "tmp/train_brk_list.R",
+                    save_breaks_list = "tmp/train_brk_list",
                     var_skip = "id"),
 
   iv_values = bins_var %>%
@@ -61,8 +61,9 @@ other_plan <- drake_plan(
   # Conduct data transformation based on IV/WoE and filter features with IV > 0.1:
   train_woe = woebin_ply(df_train, bins_var) %>%
     as.data.frame() %>%
-    select(c("label", paste0(var_IV_10, "_", "woe"))),
-
+    select(c("label", paste0(var_IV_10, "_", "woe"))) %>%
+    mutate(label = case_when(label == 1 ~ "Bad", TRUE ~ "Good")) %>%
+    mutate(label = as.factor(label)),
 
   # Data transformation for actual test data:
   test_woe = woebin_ply(df_test, bins_var) %>%
@@ -88,26 +89,23 @@ other_plan <- drake_plan(
 
   # For convinience, convert binary target variable to factor:
 
-  df_forGBM = train_woe %>%
-    mutate(label = case_when(label == 1 ~ "Bad", TRUE ~ "Good")) %>%
-    mutate(label = as.factor(label)),
-
-  # Scale our data:
-
-  df_forGBM_Scaled = df_forGBM %>%
+  train_woe_scaled = train_woe %>%
     mutate_if(is.numeric, function(x) {(x - min(x)) / (max(x) - min(x))}),
 
-  df_test_Scaled = test_woe_imputed %>%
+  test_woe_scaled = test_woe_imputed %>%
     mutate_if(is.numeric, function(x) {(x - min(x)) / (max(x) - min(x))}) ,
 
-  df_sel = df_forGBM_Scaled %>% select(c(paste0(var_IV_10[1:19], "_", "woe"), "label")),
+  df_sel = train_woe_scaled %>% select(c(paste0(var_IV_10[1:19], "_", "woe"), "label")),
+  df_sel_no_scaled = train_woe %>% select(c(paste0(var_IV_10[1:19], "_", "woe"), "label")),
 
   # Train Random Forest:
 
-  RF_default = ranger(label ~ ., data = df_sel, probability = TRUE, num.trees = 500),
+  rf_model_scaled = ranger(label ~ ., data = df_sel, probability = TRUE, num.trees = 888),
+  rf_model_no_scaled = ranger(label ~ ., data = df_sel_no_scaled, probability = TRUE, num.trees = 900),
 
   # Use the RF Classifier for predicting PD (Probability of Default):
-  pd_sub_RF = predict(RF_default, df_test_Scaled, type = "response")
+  rf_pred_scaled = predict(rf_model_scaled, test_woe_scaled, type = "response"),
+  rf_pred_no_scaled = predict(rf_model_no_scaled, test_woe_scaled, type = "response")
 
 )
 
@@ -119,7 +117,6 @@ other_plan <- drake_plan(
 #
 # # Save results for submission:
 #
-# readd(pd_sub_RF)$predictions %>% as.data.frame() %>% pull(Bad) -> pd_sub_RF
-# df_sub <- data.frame(id = 30000:49999, label = pd_sub_RF)
+# readd(rf_pred_scaled)$predictions %>% as.data.frame() %>% pull(Bad) -> rf_pred_scaled
+# df_sub <- data.frame(id = 30000:49999, label = rf_pred_scaled)
 # write_csv(df_sub, paste0("results/rf",stringr::str_replace_all(as.character(Sys.time()), ":", "-"), ".csv"))
-
