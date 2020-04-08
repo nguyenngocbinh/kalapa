@@ -209,7 +209,6 @@ other_plan <- drake_plan(
     mutate(id = 30000:49999) %>%
     select(id, label = Bad) %>%
     write_csv(paste0("results/rf",stringr::str_replace_all(as.character(Sys.time()), ":", "-"), ".csv"))
-
 )
 
 # make(other_plan)
@@ -223,4 +222,3 @@ other_plan <- drake_plan(
 # readd(rf_pred_scaled)$predictions %>% as.data.frame() %>% pull(Bad) -> rf_pred_scaled
 # df_sub <- data.frame(id = 30000:49999, label = rf_pred_scaled)
 # write_csv(df_sub, paste0("results/rf",stringr::str_replace_all(as.character(Sys.time()), ":", "-"), ".csv"))
-

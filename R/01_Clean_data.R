@@ -305,7 +305,6 @@ clean_plan = drake_plan(
       bind_rows(test_woe_scaled) %>%
       # select(c("label", sel_var))
       select(c(paste0(iv_reorder[c(1:5, 8:12, 14, 16, 19, 23, 26)], "_", "woe"), "label"))
-
     return(df_out)
 
   }),
