@@ -1,4 +1,3 @@
-
 #' @title clean maCv
 f_recode_macv <- function(st){
   library(stringr)
@@ -139,7 +138,7 @@ f_recode_macv <- function(st){
 }
 
 #' @title impute numeric variables
-f_impute_numeric <- function(feature, seed = 1911) {
+f_impute_numeric <- function(feature, seed = 158) {
   outlen <- sum(is.na(feature))
   non_na_feature <- na.omit(feature)
   set.seed(seed)
@@ -249,12 +248,12 @@ clean_plan = drake_plan(
 
   # Bin data (note skip id)
   bins_all = scorecard::woebin(cleaned_dt,
-                           y = "label",
-                           var_skip = c("id"),
-                           bin_num_limit = 8,
-                           save_breaks_list = "tmp/bins_all",
-                           stop_limit = .09,
-                           check_cate_num = FALSE),
+                               y = "label",
+                               var_skip = c("id"),
+                               bin_num_limit = 8,
+                               save_breaks_list = "tmp/bins_all",
+                               stop_limit = .09,
+                               check_cate_num = FALSE),
   iv_val = bins_all %>%
     map_dfr(bind_rows) %>%
     distinct(variable, .keep_all = TRUE) %>%
@@ -289,7 +288,7 @@ clean_plan = drake_plan(
   dt_woe_regr = target({
     dt_woe = scorecard::woebin_ply(cleaned_dt, bins = bins_all, to = "woe")
     return(dt_woe)
-    }),
+  }),
 
   # Create data for classif task
   dt_woe_classif_backup = target({
@@ -301,11 +300,15 @@ clean_plan = drake_plan(
   }),
 
   dt_woe_classif = target({
-    df_test_Scaled$label = NULL
-    out = df_forGBM_Scaled %>% bind_rows(df_test_Scaled)
-    return(out)
+    test_woe_scaled$label = NULL
+    df_out = train_woe_scaled %>%
+      bind_rows(test_woe_scaled) %>%
+      # select(c("label", sel_var))
+      select(c(paste0(iv_reorder[c(1:5, 8:12, 14, 16, 19, 23, 26)], "_", "woe"), "label"))
 
-    }),
+    return(df_out)
+
+  }),
 
   # Create data with bining only
   dt_bin = scorecard::woebin_ply(cleaned_dt, bins = bins_all, to = "bin"),

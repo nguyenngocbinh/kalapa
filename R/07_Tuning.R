@@ -18,7 +18,7 @@
 
 tuning_plan = drake_plan(
   # AutoTuner = mlr::makeTunerWrapper()
-  terminator = target(term("evals", n_evals = 30)),
+  terminator = target(term("evals", n_evals = 10)),
 
   rf_tuned = target(AutoTuner$new(
     learner = glrn, # from learner.R

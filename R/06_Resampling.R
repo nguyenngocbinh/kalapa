@@ -24,8 +24,8 @@ resampling_plan = drake_plan(
   }),
 
   resampling_outer = target({
-    rsmp_out = rsmp("repeated_cv")
-    rsmp_out$param_set$values = list(folds = 3, repeats = 1)
+    rsmp_out = rsmp("cv")
+    rsmp_out$param_set$values = list(folds = 3)
     return(rsmp_out)
   })
 )

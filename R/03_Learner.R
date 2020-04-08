@@ -1,8 +1,8 @@
 learner_plan = drake_plan(
 
   ## 1. Choose learner
-  # learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity", num.trees = 100),
-  learner = lrn("classif.xgboost", predict_type = "prob"),
+  learner = lrn("classif.ranger", predict_type = "prob", importance = "impurity", num.trees = 100),
+  # learner = lrn("classif.xgboost", predict_type = "prob"),
   # print(learner)
   polrn = PipeOpLearner$new(learner),
 
@@ -37,7 +37,7 @@ learner_plan = drake_plan(
                            filter = mlr3filters::FilterInformationGain$new(),
                            param_vals = list(filter.frac = 0.7, type = "infogain")),
 
-  filter_cor = flt("correlation", method = "kendall"),
+  filter_corr = flt("correlation", method = "kendall"),
 
   # 5. Feature transformation --------------------------------------------------
   pca        = po("pca"),
@@ -45,8 +45,8 @@ learner_plan = drake_plan(
 
   # =============================================================================
   ## 4.2. Make graph
-  # graph = posample %>>% pca %>>% polrn,
-  graph = po_scale %>>% po_yeo %>>% polrn,
+  graph = polrn,
+  # graph = po_scale %>>% po_yeo %>>% polrn,
   # graph = posample %>>% polrn,
   glrn = target({
     glrn = GraphLearner$new(graph)

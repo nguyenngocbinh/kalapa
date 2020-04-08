@@ -10,5 +10,6 @@ if (length(to.install) > 0) install.packages(to.install)
 #-----------------------------------------------------------------------------
 # require packages
 pkgs <- c("inspectdf", "readr", "dplyr", "tidyr", "magrittr", "data.table",
-          "mlr3verse", "mlr3viz", "here", "R.utils", "drake", "scorecard", "ranger")
+          "mlr3verse", "mlr3viz", "here", "R.utils", "drake", "scorecard",
+          "ranger", "bestNormalize", "purrr", "stringr")
 lapply(pkgs, function(pk) require(pk, character.only = TRUE))
