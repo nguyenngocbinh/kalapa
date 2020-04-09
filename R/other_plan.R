@@ -28,7 +28,7 @@ f_impute_numeric <- function(feature, seed = 158) {
 
 #=============================================================================
 # A function imputes NA observations:
-replace_na_categorical <- function(x, y) {
+replace_na_categorical <- function(x, y, my_seed = 1911) {
 
   y %>%
     table() %>%
@@ -39,7 +39,7 @@ replace_na_categorical <- function(x, y) {
 
   pop <- my_df$. %>% as.character() %>% as.numeric()
 
-  set.seed(29)
+  set.seed(my_seed)
 
   x[is.na(x)] <- sample(pop, sum(is.na(x)), replace = TRUE, prob = my_df$Freq)
 
@@ -93,9 +93,16 @@ other_plan <- drake_plan(
 
   test_woe_imputed = test_woe %>%
     mutate(FIELD_13_woe = replace_na_categorical(FIELD_13_woe, train_woe$FIELD_13_woe)) %>%
-    mutate(maCv_woe = replace_na_categorical(maCv_woe, train_woe$maCv_woe)) %>%
+    # mutate(maCv_woe = replace_na_categorical(maCv_woe, train_woe$maCv_woe)) %>%
+    mutate(maCv_woe = tidyr::replace_na(maCv_woe, 0.258055990053911)) %>% # AUC 301
+    # mutate(maCv_woe = tidyr::replace_na(maCv_woe, 1.07592426251586)) %>% # AUC 29709
+    # mutate(maCv_woe = tidyr::replace_na(maCv_woe, -0.1373105811738)) %>% # AUC 29709
+    # mutate(maCv_woe = tidyr::replace_na(maCv_woe, -4.26829616099658)) %>% # AUC 29677
     mutate(district_woe = replace_na_categorical(district_woe, train_woe$district_woe)) %>%
-    mutate(FIELD_7_woe = replace_na_categorical(FIELD_7_woe, train_woe$FIELD_7_woe)) %>%
+    # mutate(FIELD_7_woe = replace_na_categorical(FIELD_7_woe, train_woe$FIELD_7_woe)) %>%
+    # mutate(FIELD_7_woe = tidyr::replace_na(FIELD_7_woe, -0.245657065010189)) %>% # AUC 30487
+    mutate(FIELD_7_woe = tidyr::replace_na(FIELD_7_woe, 0.168444328058472)) %>% # AUC 3005
+    # mutate(FIELD_7_woe = tidyr::replace_na(FIELD_7_woe, 0.839305774159053)) %>% # AUC 29813
     mutate(FIELD_41_woe = replace_na_categorical(FIELD_41_woe, train_woe$FIELD_41_woe)) %>%
     mutate(FIELD_10_woe = replace_na_categorical(FIELD_10_woe, train_woe$FIELD_10_woe)) %>%
     mutate(FIELD_39_woe = replace_na_categorical(FIELD_39_woe, train_woe$FIELD_39_woe)) %>%
@@ -195,7 +202,7 @@ other_plan <- drake_plan(
   rf_model_scaled = ranger(label ~ .,
                            data = df_sel,
                            probability = TRUE,
-                           num.trees = 900,
+                           num.trees = 1200,
                            # class.weights = c(1, 60),
                            importance = "impurity"),
 

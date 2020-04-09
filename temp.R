@@ -1,34 +1,65 @@
+rank
 
-readd(df_sel) %>% names()
-readd(var_IV_10)[1:19]
+readd(test_woe)[, setdiff(readd(sel_var), "label")] -> dfx
+readd(test_woe_imputed)[, setdiff(readd(sel_var), "label")] -> dfxx
 
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.6) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.61) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.62) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.63) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.64) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.65) %>% names() # = .66
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.66) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.67) %>% names() # = .68
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.68) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.69) %>% names() # = .7
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.7) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.71) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.72) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.73) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.74) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.75) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.76) %>% names() #
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.77) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.77) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.78) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.79) %>% names() #
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.81) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.82) %>% names()#
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.83) %>% names()
-f_filter_cor(readd(train_woe_scaled), y = "label", cutoff = 0.84) %>% names()
+names(dfx)
+
+dfx %>%
+  map(is.na) %>%
+  map(table)
+
+dfx$FIELD_7_woe %>%
+  table() %>%
+  prop.table()
+
+dfxx$FIELD_7_woe %>%
+  table() %>%
+  prop.table()
+
+rf_auc <- read_csv("results/AUC_30487_rf_field_7_mid.csv")
 
 
-x %>%
-  inner_join(y, by = "id") %>%
-  mutate(dif = label.x - label.y)-> z
+rf_field_7_max <- read_csv("results/rf_field_7_max.csv")
+rf_field_7_max <- rf_field_7_max %>% transmute(low_auc = label)
+
+rf_field_7_min <- read_csv("results/rf_field_7.csv") %>%
+  transmute(low_auc2 = label)
+
+
+dfx %>%
+  bind_cols(rf_auc) %>%
+  bind_cols(rf_field_7_max) %>%
+  bind_cols(rf_field_7_min) %>%
+  mutate(rnk_hi = rank(label),
+         rnk_lo = rank(low_auc),
+         rnk_lo2 = rank(low_auc2))-> dfy
+
+dfy %>%
+  filter(is.na(FIELD_7_woe)) -> dfz
+
+dfz$rnk_hi %>% sum()
+dfz$rnk_lo %>% sum()
+
+dfy %>%
+  group_by(FIELD_7_woe) %>%
+  summarise(mean(rnk_hi), mean(rnk_lo), mean(rnk_lo2), n())
+
+dfy %>%
+  group_by(maCv_woe) %>%
+  summarise(mean(rnk_hi), mean(rnk_lo), mean(rnk_lo2), n())
+
+dfy %>%
+  group_by(maCv_woe, FIELD_7_woe) %>%
+  summarise(mean(rnk_hi), mean(rnk_lo), mean(rnk_lo2), n(), mean(label)) %>%
+  rio::export("field_7_macv.xlsx")
+
+
+dfx$maCv_woe %>%
+  table() %>%
+  prop.table()
+
+dfxx$FIELD_7_woe %>%
+  table() %>%
+  prop.table()
+

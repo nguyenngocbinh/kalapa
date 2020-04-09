@@ -44,8 +44,8 @@ param_sets_plan = drake_plan(
   ps = ParamSet$new(list(
     # ParamDbl$new("information_gain.filter.frac", lower = .8, upper = .9),
     # ParamInt$new("smote.K", lower = 3, upper = 6),
-    ParamInt$new("classif.ranger.num.trees", lower = 500, upper = 900),
+    ParamInt$new("classif.ranger.num.trees", lower = 900, upper = 1300),
     # ParamInt$new("classif.ranger.mtry", lower = 19, upper = 19),
-    ParamDbl$new("classif.ranger.sample.fraction", lower = 0.632, upper = 0.632)
+    ParamDbl$new("classif.ranger.sample.fraction", lower = 0.632, upper = 0.8)
   ))
 )
