@@ -13,7 +13,7 @@ f_recode_str <- function(st){
 }
 
 #' @title impute numeric variables
-f_impute_numeric <- function(feature, seed = 149) {
+f_impute_numeric <- function(feature, seed = 158) {
   outlen <- sum(is.na(feature))
   non_na_feature <- na.omit(feature)
   set.seed(seed)
@@ -76,13 +76,13 @@ other_plan <- drake_plan(
     as.data.frame() %>%
     select(paste0(iv_reorder, "_woe")),
 
-    # Data transformation
+  # Data transformation
   train_woe_scaled = train_woe %>%
     mutate_if(is.numeric, function(x) {(x - min(x)) / (max(x) - min(x))}),
 
   sel_var = c(paste0(c("FIELD_7", "district", "maCv", "province", "FIELD_13", "FIELD_30", "FIELD_51",
-               "FIELD_17", "FIELD_31", "FIELD_22", "FIELD_12", "FIELD_9", "FIELD_3", "FIELD_6",
-               "age_source1"), "_woe" ), "label"),
+                       "FIELD_17", "FIELD_31", "FIELD_22", "FIELD_12", "FIELD_9", "FIELD_3", "FIELD_6",
+                       "age_source1"), "_woe" ), "label"),
 
   best_var = c("FIELD_7", "district", "maCv", "province", "FIELD_13", "FIELD_30", "FIELD_51",
                "FIELD_17", "FIELD_31", "FIELD_22", "FIELD_12", "FIELD_9", "FIELD_3", "FIELD_6",
@@ -118,17 +118,18 @@ other_plan <- drake_plan(
   # df_test_sel = mice::complete(imp, action = 3),
   df_test_sel = test_woe %>%
     mutate(FIELD_7_woe = case_when(is.na(FIELD_7_woe) &
-                                      round(maCv_woe, 2) == .26 ~  -5.25,
+                                     round(maCv_woe, 2) == .26 ~  -5.25,
                                    is.na(FIELD_7_woe) &
                                      round(maCv_woe, 2)  == -.14 ~ -0.245657065010189,
                                    is.na(FIELD_7_woe) &
                                      round(maCv_woe, 2)  == 1.08 ~ 0.168444328058472,
-                                    TRUE ~ FIELD_7_woe)) %>%
+                                   # is.na(FIELD_7_woe) ~ 0.168444328058472, #2.0313654519161,
+                                   TRUE ~ FIELD_7_woe)) %>%
     mutate(maCv_woe = tidyr::replace_na(maCv_woe, 0.258055990053911)) %>%
     mutate_if(is.numeric, f_impute_numeric) %>%
     mutate_if(is.numeric, function(x) {(x - min(x)) / (max(x) - min(x))}),
 
-    # Predict
+  # Predict
   rf_pred_scaled = predict(rf_model_scaled, df_test_sel, type = "response"),
 
   # Export results to submit
